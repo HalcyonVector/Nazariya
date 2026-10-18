@@ -1,0 +1,45 @@
+# LLM providers and labellers.
+#
+# A labeller is ONE model, possibly served by several hosts tried in order: when a host's daily
+# quota is spent, the next host serving the same model takes over, so a label set never silently
+# mixes models. Every stored label records the provider and model that produced it.
+# Hosts whose key is missing from .env are skipped.
+
+providers:
+  groq:
+    kind: openai
+    base_url: https://api.groq.com/openai/v1
+    key_env: GROQ_API_KEY
+  cerebras:
+    kind: openai
+    base_url: https://api.cerebras.ai/v1
+    key_env: CEREBRAS_API_KEY  # one-off $5 credit, not a renewing tier: overflow only
+  gemini:
+    kind: openai
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    key_env: GEMINI_API_KEY  # free tier: Google may use inputs to improve products (public news only)
+  ollama:
+    kind: ollama
+    base_url: http://127.0.0.1:11434
+    key_env: null  # local, no quota
+
+labellers:
+  primary:  # silver labels
+    - provider: groq
+      model: openai/gpt-oss-120b
+      params: {reasoning_effort: low}
+    - provider: cerebras
+      model: gpt-oss-120b
+      params: {reasoning_effort: low}
+  second_opinion:  # different model family; disagreements with primary go to human review
+    - provider: gemini
+      model: gemini-3.8-flash
+      params: {reasoning_effort: low}
+  local:  # unlimited, RTX 4060; trusted only as far as its agreement with gold labels allows
+    - provider: ollama
+      model: qwen3.5:9b-q4_K_M
+      params: {think: false}
+  local_old:
+    - provider: ollama
+      model: qwen2.5:7b
+      params: {}
