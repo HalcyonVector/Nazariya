@@ -20,12 +20,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import trafilatura
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import bindparam, delete, insert, select, update
 from sqlalchemy.engine import Engine
 
 from .config import load_feeds, load_filters, load_outlets
@@ -239,19 +239,25 @@ class Ingester:
         if not stats.outcomes["skipped"]:
             del stats.outcomes["skipped"]
         ua = user_agent_for(o)
-
-        async def one(row) -> None:
-            upd, text = await self.extract_one(o, row, ua)
-            stats.outcomes[upd.get("status", "pending")] += 1
-            with self.engine.begin() as conn:
-                conn.execute(update(articles).where(articles.c.id == row.id).values(**upd))
-                if text:
-                    upsert(conn, article_text,
-                           [{"article_id": row.id, "text": text, "expires_at": self.now + TEXT_TTL}],
-                           ["article_id"])
-
         # the Fetcher caps each host at 2 concurrent requests
-        await asyncio.gather(*(one(row) for row in pending))
+        results = await asyncio.gather(*(self.extract_one(o, row, ua) for row in pending))
+
+        # One transaction per outlet, one executemany per distinct set of updated columns.
+        # Per-article commits cost several network round trips each against a remote Postgres,
+        # and these sync calls block the event loop (stalling every other outlet's fetches).
+        groups: dict[tuple[str, ...], list[dict]] = defaultdict(list)
+        texts = []
+        for row, (upd, text) in zip(pending, results):
+            stats.outcomes[upd.get("status", "pending")] += 1
+            groups[tuple(sorted(upd))].append({"b_id": row.id, **{f"v_{k}": v for k, v in upd.items()}})
+            if text:
+                texts.append({"article_id": row.id, "text": text, "expires_at": self.now + TEXT_TTL})
+        with self.engine.begin() as conn:
+            for cols, params in groups.items():
+                stmt = (update(articles).where(articles.c.id == bindparam("b_id"))
+                        .values({c: bindparam(f"v_{c}") for c in cols}))
+                conn.execute(stmt, params)
+            upsert(conn, article_text, texts, ["article_id"])
 
     def purge_text_cache(self) -> int:
         with self.engine.begin() as conn:
