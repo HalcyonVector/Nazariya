@@ -5,7 +5,7 @@ version of labels/GUIDELINES.md and stores label, confidence and a short reason.
 it stopped and paces itself on Groq's rate-limit headers (free tier: ~8k tokens/minute).
 
 Selection picks ~120 pairs for human review: every low-confidence LLM label, extra cross-lingual
-pairs, and a random slice of confident ones. A "blind" subset is shown without the LLM suggestion
+pairs, and a random slice of confident ones. A "blind" subset (incl. every repeated pair) is shown without the LLM suggestion
 so we can measure how much seeing the suggestion sways the human (anchoring).
 
 Usage:
@@ -152,7 +152,8 @@ def select_review(pairs_path: Path, target: int, blind: int, repeats: int, seed:
     originals = [pid for pid, p in pairs.items() if p["repeat_of"] is None]
     missing = [pid for pid in originals if pid not in llm and pid not in human]
     if missing:
-        raise SystemExit(f"{len(missing)} pairs have no LLM label yet; finish pre-labelling first")
+        # e.g. Groq's daily token cap hit mid-run: review from what's labelled, finish the rest later
+        print(f"note: {len(missing)} pairs have no LLM label yet; selecting from the labelled ones")
 
     chosen: list[str] = [pid for pid in originals if pid in human]  # already labelled (blind)
 
@@ -165,24 +166,40 @@ def select_review(pairs_path: Path, target: int, blind: int, repeats: int, seed:
                 chosen.append(pid)
                 k -= 1
 
+    # 1. self-consistency: originals that have a swapped repeat; original and repeat are both blind
+    repeat_of = {p["repeat_of"]: pid for pid, p in pairs.items() if p["repeat_of"]}
+    rep_origs = [o for o in repeat_of if o in human]
+    rep_origs += rng.sample([o for o in repeat_of if o in llm and o not in human],
+                            k=min(repeats, sum(1 for o in repeat_of if o in llm and o not in human)))
+    rep_origs = rep_origs[:repeats]
+    add(rep_origs, len(rep_origs))
+    # 2. the LLM itself is unsure
     low = [pid for pid in originals if pid in llm and (llm[pid]["label"] == "unsure" or llm[pid]["confidence"] < 0.75)]
     add(low, 50)
+    # 3. LLM label contradicts embedding similarity: the most informative pairs to check
+    surprising = [pid for pid in originals if pid in llm and (
+        (llm[pid]["label"] == "same_event" and pairs[pid]["band"] in ("random", "nn1", "nn2"))
+        or (llm[pid]["label"] == "unrelated" and pairs[pid]["band"] == "nn5"))]
+    add(surprising, 25)
+    # 4. extra cross-lingual pairs, 5. random fill
     cross = [pid for pid in originals if pid in llm and pairs[pid]["langs"] in ("en-hi", "hi-en")]
     add(cross, 25)
     add([pid for pid in originals if pid in llm], target)
 
-    fresh = [pid for pid in chosen if pid not in human]
-    blind_ids = set(rng.sample(fresh, min(blind, len(fresh))))
+    blind_ids = set(rep_origs) - human
+    fresh = [pid for pid in chosen if pid not in human and pid not in blind_ids]
+    blind_ids |= set(rng.sample(fresh, max(0, min(blind - len(blind_ids), len(fresh)))))
     rng.shuffle(chosen)
-    rep = [pid for pid, p in pairs.items() if p["repeat_of"] in set(chosen)][:repeats]
+    rep = [repeat_of[o] for o in rep_origs]
     queue = chosen + rep  # repeats last, long after their originals
     out = sibling(pairs_path, "review.json")
-    out.write_text(json.dumps({"queue": queue, "blind": sorted(blind_ids | {r for r in rep if pairs[r]["repeat_of"] in blind_ids}),
-                               "seed": seed}, indent=1), encoding="utf-8")
+    out.write_text(json.dumps({"queue": queue, "blind": sorted(blind_ids | set(rep)), "seed": seed}, indent=1),
+                   encoding="utf-8")
     print(f"review queue: {len(queue)} pairs ({len(chosen)} originals incl. {len(human & set(chosen))} already "
-          f"labelled, {len(rep)} repeats); {len(blind_ids)} shown without the LLM suggestion → {out.relative_to(ROOT)}")
-    print(f"  low-confidence LLM labels: {len(low)} (all included up to 50); cross-lingual in queue: "
-          f"{sum(pairs[p]['langs'] in ('en-hi', 'hi-en') for p in chosen)}")
+          f"labelled, {len(rep)} blind repeats); {len(blind_ids)} originals shown without the LLM suggestion "
+          f"→ {out.relative_to(ROOT)}")
+    print(f"  low-confidence: {len(low)} · label/similarity contradictions: {len(surprising)} · "
+          f"cross-lingual in queue: {sum(pairs[p]['langs'] in ('en-hi', 'hi-en') for p in chosen)}")
 
 
 def main() -> None:
