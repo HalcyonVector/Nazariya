@@ -29,9 +29,10 @@ jobs:
           fi
       - run: pip install -e ".[pg]"
       - name: Ingest
-        run: python -m nazariya.ingest
+        # outlets marked `runner: home` block GitHub's IPs; a scheduled task on a home PC ingests them
+        run: python -m nazariya.ingest --runner cloud
       - name: Health check
-        # fails the job (→ GitHub emails you) when an outlet has had no successful fetch for 6h
+        # fails the job (→ GitHub emails you) when a cloud outlet has had no successful fetch for 6h
         run: python -m nazariya.health --fail-on-down
       - uses: actions/upload-artifact@v4
         if: always()

@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.engine import Connection, Engine
 
-from .config import ROOT
+from .config import ROOT, load_dotenv
 
 metadata = MetaData()
 BATCH_ROWS = 200
@@ -100,6 +100,7 @@ Index("ix_fetch_runs_outlet_time", fetch_runs.c.outlet_id, fetch_runs.c.fetched_
 
 
 def database_url() -> str:
+    load_dotenv()
     url = os.environ.get("DATABASE_URL")
     if not url:
         (ROOT / "data").mkdir(exist_ok=True)

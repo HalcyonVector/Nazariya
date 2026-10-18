@@ -6,6 +6,8 @@
 # role: outlet    -> analysed and shown on coverage strips
 #       reference -> baseline source (government releases, wire agencies), not ranked
 # mvp:  true      -> part of the first ~15 sources for weeks 1–2
+# runner: home  -> CDN blocks datacenter IPs (GitHub Actions gets 403); ingested by the
+#                  scheduled task on a home PC instead (scripts/home_ingest.ps1)
 # user_agent: browser -> CDN rejects any non-browser UA (even an honest 'compatible' one);
 #                        robots.txt is still fetched and obeyed for our bot token
 
@@ -26,6 +28,7 @@ outlets:
     lang: en
     region: national
     role: outlet
+    runner: home
     mvp: true
     hints:
       - https://indianexpress.com/section/india/feed/
@@ -70,6 +73,7 @@ outlets:
     lang: en
     region: national
     role: outlet
+    runner: home
     user_agent: browser
     hints:
       - https://www.news18.com/rss/india.xml
@@ -79,6 +83,7 @@ outlets:
     lang: en
     region: national
     role: outlet
+    runner: home
     user_agent: browser
     hints:
       - https://www.firstpost.com/commonfeeds/v1/mfp/rss/india.xml
@@ -178,6 +183,7 @@ outlets:
     lang: en
     region: national
     role: outlet
+    runner: home
     hints:
       - https://organiser.org/feed/
 
@@ -301,6 +307,7 @@ outlets:
     lang: hi
     region: national
     role: outlet
+    runner: home
     hints:
       - https://www.jansatta.com/national/feed/
   - id: zeehindi

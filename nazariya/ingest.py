@@ -13,6 +13,8 @@ Usage:
     python -m nazariya.ingest --only thehindu,jagran
     python -m nazariya.ingest --no-extract     # discovery only
     python -m nazariya.ingest --budget 40      # max article fetches per outlet per run
+    python -m nazariya.ingest --runner cloud   # GitHub Actions: skip outlets marked runner: home
+    python -m nazariya.ingest --runner home    # home PC task: only outlets marked runner: home
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ import trafilatura
 from sqlalchemy import bindparam, delete, insert, select, update
 from sqlalchemy.engine import Engine
 
-from .config import load_feeds, load_filters, load_outlets
+from .config import load_feeds, load_filters, load_outlets, runner_of
 from .db import (
     article_text, articles, existing_urls, fetch_runs, get_engine, insert_ignore, runs,
     outlets as outlets_table, upsert,
@@ -264,8 +266,9 @@ class Ingester:
             return conn.execute(delete(article_text).where(article_text.c.expires_at < self.now)).rowcount
 
 
-def select_outlets(all_outlets: list[dict], feeds: dict, only: str | None, mvp: bool) -> list[dict]:
-    chosen = all_outlets
+def select_outlets(all_outlets: list[dict], feeds: dict, only: str | None, mvp: bool,
+                   runner: str = "all") -> list[dict]:
+    chosen = all_outlets if runner == "all" else [o for o in all_outlets if runner_of(o) == runner]
     if only:
         wanted = set(only.split(","))
         chosen = [o for o in chosen if o["id"] in wanted]
@@ -279,7 +282,7 @@ def select_outlets(all_outlets: list[dict], feeds: dict, only: str | None, mvp: 
 
 async def run(args: argparse.Namespace) -> None:
     all_outlets, feeds, filters = load_outlets(), load_feeds(), load_filters()
-    chosen = select_outlets(all_outlets, feeds, args.only, args.mvp)
+    chosen = select_outlets(all_outlets, feeds, args.only, args.mvp, args.runner)
     engine = get_engine()
     now = datetime.now(timezone.utc).replace(microsecond=0)
 
@@ -331,6 +334,8 @@ def main() -> None:
     ap.add_argument("--only", help="comma-separated outlet ids")
     ap.add_argument("--mvp", action="store_true", help="only outlets marked mvp: true")
     ap.add_argument("--no-extract", action="store_true")
+    ap.add_argument("--runner", choices=["all", "cloud", "home"], default="all",
+                    help="which outlets to ingest, by their `runner` in outlets.yaml")
     ap.add_argument("--budget", type=int, default=DEFAULT_BUDGET, help="article fetches per outlet per run")
     asyncio.run(run(ap.parse_args()))
 

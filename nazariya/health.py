@@ -2,7 +2,7 @@
 
 Usage:
     python -m nazariya.health                 # print + write reports/health.md
-    python -m nazariya.health --fail-on-down  # exit 1 if any outlet is DOWN (for CI alerts)
+    python -m nazariya.health --fail-on-down  # exit 1 if any cloud outlet is DOWN (for CI alerts)
 
 Flags:
     DOWN      no accepted fetch in the last 6h
@@ -11,6 +11,8 @@ Flags:
     EXTRACT   < 50% of extraction attempts in last 24h produced text (outlet expected full text)
 
 These states are what the blindspot analysis must treat as "no data", not "didn't cover".
+Outlets with `runner: home` are ingested from a home PC, so DOWN is expected while it is off;
+they are reported but never fail the CI check.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from .config import ROOT, load_feeds, load_outlets
+from .config import ROOT, load_feeds, load_outlets, runner_of
 from .db import articles, as_utc, fetch_runs, get_engine
 
 DOWN_AFTER = timedelta(hours=6)
@@ -97,7 +99,7 @@ def compute(now: datetime) -> list[dict]:
             flags.append("EXTRACT")
         errors = [f"[{r.position}] {r.error}" for r in latest_rows[oid] if r.error]
         rows.append({
-            "id": oid, "name": o["name"], "lang": o["lang"], "flags": flags,
+            "id": oid, "name": o["name"], "lang": o["lang"], "runner": runner_of(o), "flags": flags,
             "last_ok_h": None if ok_at is None else round((now - ok_at).total_seconds() / 3600, 1),
             "source_pos": pos, "new_24h": new_24h[oid], "median_daily": median,
             "extract_rate": None if rate is None else round(rate, 2), "extract_attempts": attempts,
@@ -113,13 +115,13 @@ def render(rows: list[dict], now: datetime) -> str:
         "",
         f"Generated {now:%Y-%m-%d %H:%M UTC} · {len(rows) - len(bad)}/{len(rows)} outlets healthy",
         "",
-        "| outlet | lang | flags | last ok (h) | source | new 24h | 7d median/day | extract rate (n) |",
-        "|---|---|---|---|---|---|---|---|",
+        "| outlet | lang | runner | flags | last ok (h) | source | new 24h | 7d median/day | extract rate (n) |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for r in sorted(rows, key=lambda r: (not r["flags"], r["id"])):
         rate = "-" if r["extract_rate"] is None else f"{r['extract_rate']:.0%} ({r['extract_attempts']})"
         lines.append(
-            f"| {r['name']} | {r['lang']} | {' '.join(r['flags']) or 'ok'} | {r['last_ok_h'] if r['last_ok_h'] is not None else '—'} | "
+            f"| {r['name']} | {r['lang']} | {r['runner']} | {' '.join(r['flags']) or 'ok'} | {r['last_ok_h'] if r['last_ok_h'] is not None else '—'} | "
             f"{'—' if r['source_pos'] is None else r['source_pos']} | {r['new_24h']} | "
             f"{'-' if r['median_daily'] is None else r['median_daily']} | {rate} |"
         )
@@ -141,7 +143,7 @@ def main() -> None:
     (ROOT / "reports").mkdir(exist_ok=True)
     (ROOT / "reports" / "health.md").write_text(report, encoding="utf-8")
     print(report)
-    down = [r["id"] for r in rows if "DOWN" in r["flags"]]
+    down = [r["id"] for r in rows if "DOWN" in r["flags"] and r["runner"] == "cloud"]
     if args.fail_on_down and down:
         print(f"DOWN: {', '.join(down)}", file=sys.stderr)
         sys.exit(1)
