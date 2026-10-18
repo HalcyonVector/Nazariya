@@ -3,6 +3,7 @@
 Usage:
     python -m nazariya.label.serve                       # labels/event_pairs_v1.jsonl
     python -m nazariya.label.serve --pairs labels/event_pairs_v1.jsonl --port 8765
+    python -m nazariya.label.serve --all                 # ignore the review queue, label everything blind
 
 Labels go to labels/<pairs-name>.labels.jsonl (one line per pair, latest label wins), which is
 committed. Article text is read from the database at startup and is never written to disk.
@@ -18,65 +19,66 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from sqlalchemy import select
-
 from ..config import ROOT
-from ..db import article_text, articles, as_utc, get_engine, outlets
+from .docs import load_docs, read_jsonl, sibling
 
 STATIC = Path(__file__).parent / "static"
 LABELS = {"same_event", "same_story", "unrelated", "unsure"}
-EXCERPT_CHARS = 1500
 
 
 class Store:
-    def __init__(self, pairs_path: Path):
-        self.pairs = [json.loads(l) for l in pairs_path.read_text(encoding="utf-8").splitlines() if l.strip()]
-        self.path = pairs_path.with_name(pairs_path.stem + ".labels.jsonl")
-        self.labels: dict[str, dict] = {}
-        if self.path.exists():
-            for line in self.path.read_text(encoding="utf-8").splitlines():
-                if line.strip():
-                    rec = json.loads(line)
-                    self.labels[rec["pair_id"]] = rec
+    """Review mode (default once labels/<name>.review.json exists): walk the review queue and show
+    the LLM's suggestion, except for 'blind' pairs. Every label records whether a suggestion was
+    shown, so agreement can be measured separately on blind pairs (no anchoring)."""
+
+    def __init__(self, pairs_path: Path, review: bool):
+        self.pairs = {p["pair_id"]: p for p in read_jsonl(pairs_path)}
+        self.path = sibling(pairs_path, "labels.jsonl")
+        self.labels = {r["pair_id"]: r for r in read_jsonl(self.path)}
+        self.llm = {r["pair_id"]: r for r in read_jsonl(sibling(pairs_path, "llm.jsonl"))}
+        review_path = sibling(pairs_path, "review.json")
+        self.review = review and review_path.exists()
+        if self.review:
+            spec = json.loads(review_path.read_text(encoding="utf-8"))
+            self.order, self.blind = spec["queue"], set(spec["blind"])
+        else:
+            self.order, self.blind = list(self.pairs), set(self.pairs)
         self.history: list[str] = []
         self.lock = threading.Lock()
-        self.docs = self._load_docs()
-
-    def _load_docs(self) -> dict[int, dict]:
-        ids = {p["a_id"] for p in self.pairs} | {p["b_id"] for p in self.pairs}
-        with get_engine().connect() as conn:
-            rows = conn.execute(
-                select(articles.c.id, articles.c.title, articles.c.url, articles.c.lang,
-                       articles.c.published_at, outlets.c.name, article_text.c.text)
-                .join(outlets, outlets.c.id == articles.c.outlet_id)
-                .outerjoin(article_text, article_text.c.article_id == articles.c.id)
-                .where(articles.c.id.in_(ids))
-            ).all()
-        return {
-            r.id: {"title": r.title, "url": r.url, "lang": r.lang, "outlet": r.name,
-                   "published": as_utc(r.published_at).strftime("%d %b %Y, %H:%M UTC"),
-                   "excerpt": (r.text or "")[:EXCERPT_CHARS]}
-            for r in rows
-        }
+        needed = [self.pairs[pid] for pid in self.order]
+        self.docs = load_docs({p["a_id"] for p in needed} | {p["b_id"] for p in needed})
 
     def save(self) -> None:
-        ordered = [self.labels[p["pair_id"]] for p in self.pairs if p["pair_id"] in self.labels]
+        ordered = [self.labels[pid] for pid in self.pairs if pid in self.labels]
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in ordered), encoding="utf-8")
         tmp.replace(self.path)
 
+    def suggestion(self, pair_id: str) -> dict | None:
+        if pair_id in self.blind or pair_id not in self.llm:
+            return None
+        r = self.llm[pair_id]
+        return {"label": r["label"], "confidence": r["confidence"], "reason": r["reason"]}
+
     def state(self) -> dict:
-        nxt = next((p for p in self.pairs if p["pair_id"] not in self.labels), None)
+        nxt = next((pid for pid in self.order if pid not in self.labels), None)
         item = None
         if nxt:
-            item = {"pair_id": nxt["pair_id"], "a": self.docs.get(nxt["a_id"]), "b": self.docs.get(nxt["b_id"])}
-        return {"done": len(self.labels), "total": len(self.pairs), "item": item,
-                "can_undo": bool(self.history)}
+            p = self.pairs[nxt]
+            item = {"pair_id": nxt, "a": self.docs.get(p["a_id"]), "b": self.docs.get(p["b_id"]),
+                    "suggestion": self.suggestion(nxt)}
+        return {"done": sum(pid in self.labels for pid in self.order), "total": len(self.order),
+                "item": item, "can_undo": bool(self.history), "review": self.review}
 
     def label(self, pair_id: str, label: str) -> None:
         with self.lock:
-            self.labels[pair_id] = {"pair_id": pair_id, "label": label,
-                                    "labelled_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            llm = self.llm.get(pair_id)
+            self.labels[pair_id] = {
+                "pair_id": pair_id, "label": label,
+                "shown_suggestion": self.suggestion(pair_id) is not None,
+                "llm_label": llm["label"] if llm else None,
+                "labelled_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            }
             self.history.append(pair_id)
             self.save()
 
@@ -130,11 +132,13 @@ def main() -> None:
     ap.add_argument("--pairs", default=str(ROOT / "labels" / "event_pairs_v1.jsonl"))
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--all", action="store_true", help="label every pair blind, ignoring the review queue")
     args = ap.parse_args()
-    store = Store(Path(args.pairs))
+    store = Store(Path(args.pairs), review=not args.all)
     missing = sum(1 for d in store.docs.values() if not d["excerpt"])
-    print(f"{len(store.pairs)} pairs, {len(store.labels)} already labelled, {missing} articles without text")
-    print(f"labels → {store.path.relative_to(ROOT)}")
+    mode = f"review queue of {len(store.order)} ({len(store.blind & set(store.order))} blind)" if store.review else "all pairs, blind"
+    print(f"{mode}; {len(store.labels)} labelled so far; {missing} articles without text")
+    print(f"labels → {store.path}")
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(store))
     url = f"http://127.0.0.1:{args.port}/"
     print(f"open {url}  (Ctrl+C to stop; progress is saved after every label)")

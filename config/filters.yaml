@@ -42,6 +42,12 @@ exclude_segments:
   - astrology
   - astro
   - horoscope
+  - horoscopes  # indiatoday.in/horoscopes/...
+  - tarot-card-reading
+  - tarot
+  - numerology
+  - panchang
+  - vastu
   - rashifal
   - jyotish
   - dharm

@@ -42,6 +42,11 @@
   button[data-k="3"] { color: var(--k3); } button[data-k="0"], #undo { color: var(--k0); }
   button:disabled { opacity: .4; cursor: default; }
   .flash { outline: 2px solid currentColor; }
+  button.suggested { outline: 2px solid currentColor; outline-offset: 2px; font-weight: 600; }
+  .suggest { margin: 0 20px; padding: 8px 14px; border: 1px dashed var(--line); border-radius: 8px;
+             color: var(--muted); font-size: 13px; text-align: center; }
+  .suggest b { color: var(--text); }
+  .suggest.blind { border-style: solid; }
   .done { text-align: center; padding: 80px 20px; grid-column: 1 / -1; }
   details { padding: 0 20px 20px; color: var(--muted); font-size: 13px; max-width: 900px; margin: 0 auto; }
 </style>
@@ -53,11 +58,13 @@
   <span class="count" id="count"></span>
 </header>
 <main id="main"></main>
+<div class="suggest" id="suggest" hidden></div>
 <footer>
   <button data-k="1" data-label="same_event"><kbd>1</kbd>Same event</button>
   <button data-k="2" data-label="same_story"><kbd>2</kbd>Same story, different event</button>
   <button data-k="3" data-label="unrelated"><kbd>3</kbd>Unrelated</button>
   <button data-k="0" data-label="unsure"><kbd>0</kbd>Unsure</button>
+  <button id="accept" hidden><kbd>Enter</kbd>Accept suggestion</button>
   <button id="undo"><kbd>Z</kbd>Undo</button>
 </footer>
 <details>
@@ -106,6 +113,20 @@ function render(s) {
   }
   document.querySelectorAll("button[data-label]").forEach(b => b.disabled = false);
   main.append(card(s.item.a, "A"), card(s.item.b, "B"));
+  const sug = s.item.suggestion, box = $("suggest");
+  document.querySelectorAll("button[data-label]").forEach(b =>
+    b.classList.toggle("suggested", !!sug && b.dataset.label === sug.label));
+  $("accept").hidden = !sug;
+  box.hidden = !s.review;
+  box.className = "suggest" + (sug ? "" : " blind");
+  box.replaceChildren();
+  if (sug) {
+    const name = { same_event: "Same event", same_story: "Same story", unrelated: "Unrelated", unsure: "Unsure" }[sug.label];
+    const b = document.createElement("b"); b.textContent = `${name} (${Math.round(sug.confidence * 100)}%)`;
+    box.append("LLM suggests ", b, ` · ${sug.reason}`);
+  } else if (s.review) {
+    box.textContent = "Blind pair: no suggestion shown. Judge it yourself.";
+  }
   main.scrollIntoView({ block: "start" });
 }
 
@@ -128,10 +149,15 @@ function label(name, btn) {
 document.querySelectorAll("button[data-label]").forEach(b =>
   b.addEventListener("click", () => label(b.dataset.label, b)));
 $("undo").addEventListener("click", () => post("/api/undo"));
+$("accept").addEventListener("click", () => {
+  const sug = state && state.item && state.item.suggestion;
+  if (sug) label(sug.label, document.querySelector(`button[data-label="${sug.label}"]`));
+});
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const btn = document.querySelector(`button[data-k="${e.key}"]`);
   if (btn) { e.preventDefault(); label(btn.dataset.label, btn); }
+  else if (e.key === "Enter") { e.preventDefault(); $("accept").click(); }
   else if (e.key === "z" || e.key === "Z" || e.key === "Backspace") { e.preventDefault(); post("/api/undo"); }
 });
 
