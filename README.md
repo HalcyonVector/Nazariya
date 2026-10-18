@@ -35,6 +35,15 @@ pytest -q
    Wire bylines (PTI/ANI/IANS/UNI/Reuters/AFP, incl. Hindi forms) → `agency`.
 4. **Dates**: future timestamps (IST labelled as UTC, e.g. Dainik Bhaskar) are shifted and flagged.
 
+## Home runner
+Indian Express, News18, Firstpost, Jansatta and Organiser block datacenter IPs, so GitHub Actions
+skips them (`--runner cloud`) and a Windows scheduled task on a home PC ingests them every 2 hours:
+```powershell
+# one-time: put the Neon connection string in .env (gitignored):  DATABASE_URL=postgresql://...
+powershell -ExecutionPolicy Bypass -File scripts\install_home_task.ps1   # re-run after moving the folder
+```
+Logs go to `data/logs/`. While the PC is off these outlets show as DOWN (= "no data") in the health report.
+
 ## Ethics
 - Respects robots.txt for every fetch.
 - Identifies itself as `NazariyaBot`, except for 4 outlets (News18, Firstpost, PIB, ANI) whose CDN
