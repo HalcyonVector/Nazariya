@@ -61,6 +61,10 @@ Index("ix_articles_outlet_published", articles.c.outlet_id, articles.c.published
 Index("ix_articles_status", articles.c.status)
 Index("ix_articles_discovered", articles.c.discovered_at)
 
+# Texts of articles in labelled gold sets are kept for reproducible evaluation (still never
+# exported or published); everything else expires after the ingest TEXT_TTL.
+PINNED_UNTIL = datetime(9999, 12, 31, tzinfo=timezone.utc)
+
 article_text = Table(
     "article_text", metadata,
     Column("article_id", Integer, ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True),
@@ -113,7 +117,8 @@ def database_url() -> str:
 
 
 def get_engine(url: str | None = None) -> Engine:
-    engine = create_engine(url or database_url(), future=True)
+    # pre-ping: Neon suspends idle compute and drops connections during long CPU-bound steps
+    engine = create_engine(url or database_url(), future=True, pool_pre_ping=True)
     metadata.create_all(engine)
     return engine
 

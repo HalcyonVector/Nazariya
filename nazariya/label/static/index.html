@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nazariya · event pairs</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e2dd;
+    --accent: #2f5d50; --k1: #2f6f4f; --k2: #8a6a1f; --k3: #7a3b3b; --k0: #5b5b66;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --card: #1f1f1d; --text: #ecebe6; --muted: #9a9993; --line: #33332f;
+      --accent: #7fb8a4; --k1: #6fbf95; --k2: #d8b25a; --k3: #d98585; --k0: #a3a3ad;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.55 system-ui, "Segoe UI", "Nirmala UI", "Noto Sans Devanagari", sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .progress { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .progress div { height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+  .count { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 20px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px;
+          display: flex; flex-direction: column; min-height: 0; }
+  .meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+  .meta .outlet { color: var(--text); font-weight: 600; }
+  .badge { border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; font-size: 11px; text-transform: uppercase; }
+  h2 { font-size: 18px; line-height: 1.35; margin: 10px 0; }
+  .excerpt { white-space: pre-wrap; overflow-y: auto; max-height: 52vh; color: var(--text); opacity: .9; }
+  .card a { color: var(--accent); font-size: 13px; margin-top: 10px; }
+  footer { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding: 4px 20px 20px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
+           border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button kbd { font: 600 12px ui-monospace, monospace; border: 1px solid currentColor; border-radius: 4px;
+               padding: 0 5px; margin-right: 6px; }
+  button[data-k="1"] { color: var(--k1); } button[data-k="2"] { color: var(--k2); }
+  button[data-k="3"] { color: var(--k3); } button[data-k="0"], #undo { color: var(--k0); }
+  button:disabled { opacity: .4; cursor: default; }
+  .flash { outline: 2px solid currentColor; }
+  .done { text-align: center; padding: 80px 20px; grid-column: 1 / -1; }
+  details { padding: 0 20px 20px; color: var(--muted); font-size: 13px; max-width: 900px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Nazariya · same event?</h1>
+  <div class="progress"><div id="bar"></div></div>
+  <span class="count" id="count"></span>
+</header>
+<main id="main"></main>
+<footer>
+  <button data-k="1" data-label="same_event"><kbd>1</kbd>Same event</button>
+  <button data-k="2" data-label="same_story"><kbd>2</kbd>Same story, different event</button>
+  <button data-k="3" data-label="unrelated"><kbd>3</kbd>Unrelated</button>
+  <button data-k="0" data-label="unsure"><kbd>0</kbd>Unsure</button>
+  <button id="undo"><kbd>Z</kbd>Undo</button>
+</footer>
+<details>
+  <summary>Guidelines</summary>
+  <p><b>1 Same event</b>: both mainly report the same specific happening (same occurrence, actors and time), whatever the angle or language.
+  <b>2 Same story</b>: same ongoing issue but different happenings (another day's development, a reaction that is itself the news, a follow-up).
+  <b>3 Unrelated</b>: different issues, even with a shared person or place. <b>0 Unsure</b>: too little text or genuinely ambiguous.
+  Judge what each article is <i>mainly</i> about. Full rules are in labels/GUIDELINES.md.</p>
+</details>
+<script>
+let state = null, busy = false;
+const $ = (id) => document.getElementById(id);
+
+function card(doc, side) {
+  const el = document.createElement("article");
+  el.className = "card";
+  if (!doc) { el.textContent = `Article ${side} not found in database`; return el; }
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const outlet = document.createElement("span"); outlet.className = "outlet"; outlet.textContent = doc.outlet;
+  const lang = document.createElement("span"); lang.className = "badge"; lang.textContent = doc.lang;
+  const date = document.createElement("span"); date.textContent = doc.published;
+  meta.append(outlet, lang, date);
+  const h = document.createElement("h2"); h.textContent = doc.title; h.lang = doc.lang;
+  const ex = document.createElement("div"); ex.className = "excerpt"; ex.lang = doc.lang;
+  ex.textContent = doc.excerpt || "(no text: headline only)";
+  const a = document.createElement("a"); a.href = doc.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  a.textContent = "open original ↗";
+  el.append(meta, h, ex, a);
+  return el;
+}
+
+function render(s) {
+  state = s;
+  $("count").textContent = `${s.done} / ${s.total}`;
+  $("bar").style.width = `${(100 * s.done / s.total).toFixed(1)}%`;
+  $("undo").disabled = !s.can_undo;
+  const main = $("main");
+  main.replaceChildren();
+  if (!s.item) {
+    const d = document.createElement("div"); d.className = "done";
+    d.textContent = "All pairs labelled. Labels are saved; you can close this tab.";
+    main.append(d);
+    document.querySelectorAll("button[data-label]").forEach(b => b.disabled = true);
+    return;
+  }
+  document.querySelectorAll("button[data-label]").forEach(b => b.disabled = false);
+  main.append(card(s.item.a, "A"), card(s.item.b, "B"));
+  main.scrollIntoView({ block: "start" });
+}
+
+async function post(path, body) {
+  if (busy) return;
+  busy = true;
+  try {
+    const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify(body || {}) });
+    if (r.ok) render(await r.json());
+  } finally { busy = false; }
+}
+
+function label(name, btn) {
+  if (!state || !state.item) return;
+  if (btn) { btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 150); }
+  post("/api/label", { pair_id: state.item.pair_id, label: name });
+}
+
+document.querySelectorAll("button[data-label]").forEach(b =>
+  b.addEventListener("click", () => label(b.dataset.label, b)));
+$("undo").addEventListener("click", () => post("/api/undo"));
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const btn = document.querySelector(`button[data-k="${e.key}"]`);
+  if (btn) { e.preventDefault(); label(btn.dataset.label, btn); }
+  else if (e.key === "z" || e.key === "Z" || e.key === "Backspace") { e.preventDefault(); post("/api/undo"); }
+});
+
+fetch("/api/state").then(r => r.json()).then(render);
+</script>
+</body>
+</html>

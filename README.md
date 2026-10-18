@@ -35,6 +35,17 @@ pytest -q
    Wire bylines (PTI/ANI/IANS/UNI/Reuters/AFP, incl. Hindi forms) → `agency`.
 4. **Dates**: future timestamps (IST labelled as UTC, e.g. Dainik Bhaskar) are shifted and flagged.
 
+## Labelling (event pairs)
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -e ".[ml]"
+python -m nazariya.label.sample      # once: 400 stratified pairs + 20 repeats → labels/event_pairs_v1.jsonl
+python -m nazariya.label.serve       # local page at http://127.0.0.1:8765, keys 1/2/3/0, Z = undo
+```
+Read [labels/GUIDELINES.md](labels/GUIDELINES.md) first. Pair and label files hold only ids/URLs and
+are committed; article text is read from the database at runtime. Texts of labelled articles are
+kept past the 14-day cache so evaluations stay reproducible (still never published).
+
 ## Home runner
 Indian Express, News18, Firstpost, Jansatta and Organiser block datacenter IPs, so GitHub Actions
 skips them (`--runner cloud`) and a Windows scheduled task on a home PC ingests them every 2 hours:

@@ -1,0 +1,43 @@
+"""Multilingual sentence embeddings for article similarity (title + lede)."""
+
+from __future__ import annotations
+
+import numpy as np
+
+# key -> (Hugging Face model id, text prefix). E5 models expect "query: " for symmetric tasks.
+MODELS = {
+    "e5-small": ("intfloat/multilingual-e5-small", "query: "),
+    "e5-base": ("intfloat/multilingual-e5-base", "query: "),
+    "bge-m3": ("BAAI/bge-m3", ""),
+    "mpnet": ("sentence-transformers/paraphrase-multilingual-mpnet-base-v2", ""),
+}
+LEDE_WORDS = 200
+MAX_TOKENS = 256  # same cap for every model so the comparison is fair (and CPU-friendly)
+
+_loaded: dict = {}
+
+
+def doc_text(title: str, text: str | None, words: int = LEDE_WORDS) -> str:
+    """What we embed: the headline plus the first ~200 words (events are defined by the lede)."""
+    lede = " ".join((text or "").split()[:words])
+    return f"{title}\n{lede}".strip()
+
+
+def load(key: str):
+    if key not in _loaded:
+        from sentence_transformers import SentenceTransformer
+
+        model = SentenceTransformer(MODELS[key][0], device="cpu")
+        model.max_seq_length = MAX_TOKENS
+        _loaded[key] = model
+    return _loaded[key]
+
+
+def embed(key: str, texts: list[str], batch_size: int = 32, progress: bool = False) -> np.ndarray:
+    """L2-normalised float32 embeddings, so cosine similarity is a dot product."""
+    prefix = MODELS[key][1]
+    vecs = load(key).encode(
+        [prefix + t for t in texts], batch_size=batch_size, normalize_embeddings=True,
+        convert_to_numpy=True, show_progress_bar=progress,
+    )
+    return vecs.astype(np.float32)
