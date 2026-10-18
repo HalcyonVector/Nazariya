@@ -31,6 +31,8 @@ labellers:
     - provider: cerebras
       model: gpt-oss-120b
       params: {reasoning_effort: low}
+  # Gemini's free tier allows only 20 requests/day per model (gemini-3.8-flash), so it is a daily
+  # spot check of hard pairs, not a bulk labeller; `local` is the unlimited second opinion.
   second_opinion:  # different model family; disagreements with primary go to human review
     - provider: gemini
       model: gemini-3.8-flash
@@ -38,7 +40,8 @@ labellers:
   local:  # unlimited, RTX 4060; trusted only as far as its agreement with gold labels allows
     - provider: ollama
       model: qwen3.5:9b-q4_K_M
-      params: {think: false}
+      # 2k context (prompts are ~1.3k tokens) leaves room to keep the whole model on the 8 GB GPU
+      params: {think: false, options: {num_ctx: 2048}}
   local_old:
     - provider: ollama
       model: qwen2.5:7b

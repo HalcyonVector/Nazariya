@@ -27,7 +27,10 @@ def load(key: str):
     if key not in _loaded:
         from sentence_transformers import SentenceTransformer
 
-        model = SentenceTransformer(MODELS[key][0], device="cpu")
+        import torch
+
+        # GPU when present (local dev / labelling), CPU elsewhere (GitHub Actions, home task)
+        model = SentenceTransformer(MODELS[key][0], device="cuda" if torch.cuda.is_available() else "cpu")
         model.max_seq_length = MAX_TOKENS
         _loaded[key] = model
     return _loaded[key]

@@ -93,10 +93,12 @@ class Labeller:
         for attempt in range(8):
             self.last_call = time.monotonic()
             if h.kind == "ollama":
+                extra = {k: v for k, v in h.params.items() if k != "options"}
                 r = self.client.post(f"{h.base_url}/api/chat", json={
                     "model": h.model, "stream": False, "format": "json",
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-                    "options": {"temperature": 0, "num_predict": max_tokens}, **h.params,
+                    "options": {"temperature": 0, "num_predict": max_tokens, **h.params.get("options", {})},
+                    **extra,
                 })
             else:
                 r = self.client.post(f"{h.base_url}/chat/completions", headers={"Authorization": f"Bearer {h.key}"}, json={
