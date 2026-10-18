@@ -20,7 +20,9 @@ if (-not ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern '^\s*
 
 $env:PYTHONIOENCODING = "utf-8"
 Write-Log "start"
-& "$repo\.venv\Scripts\python.exe" -m nazariya.ingest --runner home *>> $log
+# Redirect through cmd: Windows PowerShell 5.1's *>> re-encodes native output as UTF-16,
+# which garbles a UTF-8 log, and 2>&1 would turn stderr lines into terminating errors.
+cmd /c "`"$repo\.venv\Scripts\python.exe`" -m nazariya.ingest --runner home >> `"$log`" 2>&1"
 $code = $LASTEXITCODE
 Write-Log "end (exit $code)"
 exit $code
