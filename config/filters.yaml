@@ -1,0 +1,98 @@
+# Out-of-scope content, dropped at discovery time (counted in fetch_runs.items_filtered).
+# We keep news about politics, governance, economy, courts, crime, health, education, world.
+#
+# exclude_segments: matched against every lowercased URL path segment (exact match).
+# `religion`/`dharm` sections on Indian sites are mostly festival/puja/astrology content;
+# religion-related political news is normally filed under india/national/state sections.
+exclude_segments:
+  # sport
+  - sports
+  - sport
+  - cricket
+  - football
+  - ipl
+  - tennis
+  - khel
+  - khel-samachar
+  # entertainment
+  - entertainment
+  - bollywood
+  - hollywood
+  - movies
+  - movie-reviews
+  - movie-review
+  - web-series
+  - ott
+  - tv
+  - television
+  - music
+  - celebrity
+  - celebrities
+  - manoranjan
+  - entertainment-news
+  # lifestyle & astrology
+  - lifestyle
+  - fashion
+  - beauty
+  - food
+  - recipes
+  - recipe
+  - travel
+  - relationships
+  - astrology
+  - astro
+  - horoscope
+  - rashifal
+  - jyotish
+  - dharm
+  - dharm-karm
+  - religion
+  - spirituality
+  # tech & auto
+  - tech
+  - technology
+  - gadgets
+  - mobile-phones
+  - auto
+  - automobile
+  - gaming
+  # media formats
+  - video
+  - videos
+  - photos
+  - photo
+  - gallery
+  - photogallery
+  - photo-gallery
+  - web-stories
+  - webstories
+  - web-story
+  - visual-stories
+  - shorts
+  - podcast
+  - podcasts
+  - live-tv
+  # utility & sponsored
+  - viral
+  - trending
+  - quiz
+  - puzzles
+  - crossword
+  - games
+  - jobs
+  - careers
+  - sarkari-naukri
+  - results
+  - brand-stories
+  - brandstories
+  - brand-studio
+  - spotlight
+  - sponsored
+  - partner-content
+  - press-release
+  - ptiprnews  # PTI's paid press-release service, not news
+
+# Whole subdomains to drop (after removing www.)
+exclude_hosts:
+  - sports.ndtv.com
+  - gadgets360.com

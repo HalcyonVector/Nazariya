@@ -1,0 +1,41 @@
+name: ingest
+
+on:
+  schedule:
+    - cron: "17 */2 * * *"  # every 2 hours, off the top of the hour
+  workflow_dispatch:
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Require database secret
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Add a DATABASE_URL repository secret (Neon or Supabase Postgres connection string)"
+            exit 1
+          fi
+      - run: pip install -e ".[pg]"
+      - name: Ingest
+        run: python -m nazariya.ingest
+      - name: Health check
+        # fails the job (→ GitHub emails you) when an outlet has had no successful fetch for 6h
+        run: python -m nazariya.health --fail-on-down
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: health-report
+          path: reports/health.md
+          retention-days: 14

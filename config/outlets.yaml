@@ -1,0 +1,351 @@
+# Candidate outlet registry.
+# `hints` are unverified starting points; `python -m nazariya.probe` checks them and
+# auto-discovers more (homepage <link rel=alternate>, common paths, robots.txt news sitemaps).
+# No editorial-leaning labels here on purpose: outlet groupings must come from the data.
+#
+# role: outlet    -> analysed and shown on coverage strips
+#       reference -> baseline source (government releases, wire agencies), not ranked
+# mvp:  true      -> part of the first ~15 sources for weeks 1–2
+# user_agent: browser -> CDN rejects any non-browser UA (even an honest 'compatible' one);
+#                        robots.txt is still fetched and obeyed for our bot token
+
+outlets:
+  # ---------------- National English ----------------
+  - id: thehindu
+    name: The Hindu
+    homepage: https://www.thehindu.com/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://www.thehindu.com/news/national/feeder/default.rss
+  - id: indianexpress
+    name: The Indian Express
+    homepage: https://indianexpress.com/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://indianexpress.com/section/india/feed/
+  - id: toi
+    name: The Times of India
+    homepage: https://timesofindia.indiatimes.com/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms
+  - id: hindustantimes
+    name: Hindustan Times
+    homepage: https://www.hindustantimes.com/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml
+  - id: ndtv
+    name: NDTV
+    homepage: https://www.ndtv.com/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://feeds.feedburner.com/ndtvnews-india-news
+  - id: indiatoday
+    name: India Today
+    homepage: https://www.indiatoday.in/
+    lang: en
+    region: national
+    role: outlet
+    hints:
+      - https://www.indiatoday.in/rss/home
+  - id: news18
+    name: News18
+    homepage: https://www.news18.com/
+    lang: en
+    region: national
+    role: outlet
+    user_agent: browser
+    hints:
+      - https://www.news18.com/rss/india.xml
+  - id: firstpost
+    name: Firstpost
+    homepage: https://www.firstpost.com/
+    lang: en
+    region: national
+    role: outlet
+    user_agent: browser
+    hints:
+      - https://www.firstpost.com/commonfeeds/v1/mfp/rss/india.xml
+  - id: theprint
+    name: ThePrint
+    homepage: https://theprint.in/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://theprint.in/feed/
+  - id: thewire
+    name: The Wire
+    homepage: https://thewire.in/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://thewire.in/rss
+    rewrite_hosts:  # its news sitemap links to a non-resolving mirror domain
+      thewirenews.in: thewire.in
+  - id: scroll
+    name: Scroll
+    homepage: https://scroll.in/
+    lang: en
+    region: national
+    role: outlet
+    hints:
+      - https://feeds.feedburner.com/ScrollinArticles.rss
+  - id: thequint
+    name: The Quint
+    homepage: https://www.thequint.com/
+    lang: en
+    region: national
+    role: outlet
+    hints:
+      - https://www.thequint.com/stories.rss
+  - id: republic
+    name: Republic World
+    homepage: https://www.republicworld.com/
+    lang: en
+    region: national
+    role: outlet
+    hints:
+      - https://www.republicworld.com/rss/india.xml
+  - id: opindia
+    name: OpIndia
+    homepage: https://www.opindia.com/
+    lang: en
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://www.opindia.com/feed/
+  - id: swarajya
+    name: Swarajya
+    homepage: https://swarajyamag.com/
+    lang: en
+    region: national
+    role: outlet
+    hints:
+      - https://swarajyamag.com/feed
+  - id: deccanherald
+    name: Deccan Herald
+    homepage: https://www.deccanherald.com/
+    lang: en
+    region: south
+    role: outlet
+    hints: []
+  - id: tribune
+    name: The Tribune
+    homepage: https://www.tribuneindia.com/
+    lang: en
+    region: north
+    role: outlet
+    hints: []
+  - id: telegraph
+    name: The Telegraph
+    homepage: https://www.telegraphindia.com/
+    lang: en
+    region: east
+    role: outlet
+    hints: []
+  - id: nationalherald
+    name: National Herald
+    homepage: https://www.nationalheraldindia.com/
+    lang: en
+    region: national
+    role: outlet
+    hints:
+      - https://www.nationalheraldindia.com/stories.rss
+  - id: organiser
+    name: Organiser
+    homepage: https://organiser.org/
+    lang: en
+    region: national
+    role: outlet
+    hints:
+      - https://organiser.org/feed/
+
+  # ---------------- Regional (English editions) ----------------
+  - id: newindianexpress
+    name: The New Indian Express
+    homepage: https://www.newindianexpress.com/
+    lang: en
+    region: south
+    role: outlet
+    hints:
+      - https://www.newindianexpress.com/Nation/rssfeed/?id=170&getXmlFeed=true
+  - id: onmanorama
+    name: Onmanorama
+    homepage: https://www.onmanorama.com/
+    lang: en
+    region: south
+    role: outlet
+    hints: []
+  - id: deccanchronicle
+    name: Deccan Chronicle
+    homepage: https://www.deccanchronicle.com/
+    lang: en
+    region: south
+    role: outlet
+    hints: []
+  - id: assamtribune
+    name: The Assam Tribune
+    homepage: https://assamtribune.com/
+    lang: en
+    region: northeast
+    role: outlet
+    hints: []
+  - id: greaterkashmir
+    name: Greater Kashmir
+    homepage: https://www.greaterkashmir.com/
+    lang: en
+    region: north
+    role: outlet
+    hints: []
+  - id: shillongtimes
+    name: The Shillong Times
+    homepage: https://theshillongtimes.com/
+    lang: en
+    region: northeast
+    role: outlet
+    hints:
+      - https://theshillongtimes.com/feed/
+
+  # ---------------- Hindi ----------------
+  - id: jagran
+    name: Dainik Jagran
+    homepage: https://www.jagran.com/
+    lang: hi
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://www.jagran.com/rss/news/national.xml
+  - id: amarujala
+    name: Amar Ujala
+    homepage: https://www.amarujala.com/
+    lang: hi
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://www.amarujala.com/rss/india-news.xml
+  - id: bhaskar
+    name: Dainik Bhaskar
+    homepage: https://www.bhaskar.com/
+    lang: hi
+    region: national
+    role: outlet
+    hints: []
+  - id: navbharattimes
+    name: Navbharat Times
+    homepage: https://navbharattimes.indiatimes.com/
+    lang: hi
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://navbharattimes.indiatimes.com/rssfeedsdefault.cms
+  - id: livehindustan
+    name: Live Hindustan
+    homepage: https://www.livehindustan.com/
+    lang: hi
+    region: national
+    role: outlet
+    hints:
+      - https://api.livehindustan.com/feeds/rss/national/rssfeed.xml
+  - id: aajtak
+    name: Aaj Tak
+    homepage: https://www.aajtak.in/
+    lang: hi
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://www.aajtak.in/rssfeeds/?id=home
+  - id: abplive
+    name: ABP News
+    homepage: https://www.abplive.com/
+    lang: hi
+    region: national
+    role: outlet
+    hints:
+      - https://www.abplive.com/news/india/feed
+  - id: ndtvindia
+    name: NDTV India
+    homepage: https://ndtv.in/
+    lang: hi
+    region: national
+    role: outlet
+    hints:
+      - https://feeds.feedburner.com/ndtvkhabar-latest
+  - id: jansatta
+    name: Jansatta
+    homepage: https://www.jansatta.com/
+    lang: hi
+    region: national
+    role: outlet
+    hints:
+      - https://www.jansatta.com/national/feed/
+  - id: zeehindi
+    name: Zee News Hindi
+    homepage: https://zeenews.india.com/hindi
+    lang: hi
+    region: national
+    role: outlet
+    hints:
+      - https://zeenews.india.com/hindi/india.xml
+  - id: bbchindi
+    name: BBC Hindi
+    homepage: https://www.bbc.com/hindi
+    lang: hi
+    region: national
+    role: outlet
+    mvp: true
+    hints:
+      - https://feeds.bbci.co.uk/hindi/rss.xml
+  - id: lallantop
+    name: The Lallantop
+    homepage: https://www.thelallantop.com/
+    lang: hi
+    region: national
+    role: outlet
+    hints: []
+
+  # ---------------- Reference sources ----------------
+  - id: pib
+    name: Press Information Bureau
+    homepage: https://pib.gov.in/
+    lang: en
+    region: national
+    role: reference
+    user_agent: browser
+    mvp: true
+    hints:
+      - https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3
+  - id: ani
+    name: ANI
+    homepage: https://www.aninews.in/
+    lang: en
+    region: national
+    role: reference
+    user_agent: browser
+    mvp: true
+    hints:
+      - https://aninews.in/rss/national/general-news.xml

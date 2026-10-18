@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.env
+data/
+node_modules/
+.next/
+# regenerated on every run; CI uploads it as an artifact
+reports/health.md
