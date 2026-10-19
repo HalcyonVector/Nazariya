@@ -13,6 +13,8 @@ only see headlines from still show up in coverage. Same-outlet duplicates are ex
 Usage:
     python -m nazariya.cluster              # embed + assign new articles (runs after ingest)
     python -m nazariya.cluster --tau 0.7
+    python -m nazariya.cluster --budget-min 20    # cap embedding time (CPU runners)
+    python -m nazariya.cluster --embed-only       # home PC: embed on the GPU, leave assignment to cloud
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ from sqlalchemy import and_, bindparam, delete, insert, select, update
 from sqlalchemy.engine import Engine
 
 from .db import (
-    article_events, article_text, article_vectors, articles, as_utc, events, get_engine,
+    article_events, article_text, article_vectors, articles, as_utc, events, get_engine, insert_ignore,
 )
 from .embed import doc_text, embed
 
@@ -38,6 +40,7 @@ WINDOW = timedelta(hours=72)  # an event stays open this long after its latest a
 VECTOR_TTL = timedelta(days=5)
 FINISHED = ("extracted", "headline_only", "skipped", "failed")
 EMBED_BATCH = 64
+EMBED_CHUNK = 256  # rows per write; also how often the time budget is checked
 
 
 # ---------- algorithm ----------
@@ -118,8 +121,10 @@ def from_blob(b: bytes, dtype=np.float16) -> np.ndarray:
     return np.frombuffer(b, dtype=dtype).astype(np.float32)
 
 
-def embed_new(engine: Engine, now: datetime, model: str = MODEL) -> int:
-    """Embed finished articles from the last WINDOW that have no vector yet."""
+def embed_new(engine: Engine, now: datetime, model: str = MODEL, budget_s: float | None = None) -> int:
+    """Embed finished articles from the last WINDOW that have no vector yet, newest first, stopping
+    after `budget_s` seconds (the rest carry over to the next run). Safe to run from two machines
+    at once: a vector another run already wrote is skipped."""
     with engine.connect() as conn:
         rows = conn.execute(
             select(articles.c.id, articles.c.title, articles.c.summary, article_text.c.text)
@@ -127,23 +132,27 @@ def embed_new(engine: Engine, now: datetime, model: str = MODEL) -> int:
             .outerjoin(article_vectors, article_vectors.c.article_id == articles.c.id)
             .where(article_vectors.c.article_id.is_(None), articles.c.status.in_(FINISHED),
                    articles.c.published_at >= now - WINDOW)
-            .order_by(articles.c.published_at)
+            .order_by(articles.c.published_at.desc())
         ).all()
     # nothing to embed (no headline, summary or body) would collapse into one blob of identical vectors
     rows = [r for r in rows if (r.title or "").strip() or r.text or r.summary]
     if not rows:
         return 0
-    for start in range(0, len(rows), 1024):
-        chunk = rows[start:start + 1024]
+    t0, done = time.monotonic(), 0
+    for start in range(0, len(rows), EMBED_CHUNK):
+        if budget_s is not None and time.monotonic() - t0 > budget_s:
+            break
+        chunk = rows[start:start + EMBED_CHUNK]
         texts = [doc_text(r.title, r.text) if r.text else doc_text(r.title, r.summary) for r in chunk]
         vecs = embed(model, texts, batch_size=EMBED_BATCH)
         with engine.begin() as conn:
-            conn.execute(insert(article_vectors), [
+            insert_ignore(conn, article_vectors, [
                 {"article_id": r.id, "model": model, "vec": to_blob(v),
                  "text_kind": "lede" if r.text else "headline", "created_at": now}
                 for r, v in zip(chunk, vecs)
-            ])
-    return len(rows)
+            ], ["article_id"])
+        done += len(chunk)
+    return done
 
 
 # ---------- DB pipeline ----------
@@ -263,12 +272,14 @@ def housekeeping(engine: Engine, now: datetime) -> dict:
     return {"events_closed": closed, "vectors_purged": purged}
 
 
-def run(tau: float = TAU, model: str = MODEL) -> dict:
+def run(tau: float = TAU, model: str = MODEL, budget_min: float | None = None, embed_only: bool = False) -> dict:
     engine = get_engine()
     now = datetime.now(timezone.utc).replace(microsecond=0)
     t0 = time.monotonic()
-    stats = {"embedded": embed_new(engine, now, model)}
+    stats = {"embedded": embed_new(engine, now, model, None if budget_min is None else budget_min * 60)}
     stats["embed_s"] = round(time.monotonic() - t0, 1)
+    if embed_only:
+        return stats
     stats.update(assign_new(engine, now, tau, model))
     stats.update(housekeeping(engine, now))
     stats["total_s"] = round(time.monotonic() - t0, 1)
@@ -279,8 +290,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tau", type=float, default=TAU)
     ap.add_argument("--model", default=MODEL)
+    ap.add_argument("--budget-min", type=float, help="stop embedding after N minutes (rest carries over)")
+    ap.add_argument("--embed-only", action="store_true",
+                    help="only embed (home PC helper); event assignment stays with the single cloud writer")
     args = ap.parse_args()
-    print(run(args.tau, args.model))
+    print(run(args.tau, args.model, args.budget_min, args.embed_only))
 
 
 if __name__ == "__main__":

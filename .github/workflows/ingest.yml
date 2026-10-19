@@ -49,8 +49,10 @@ jobs:
         # outlets marked `runner: home` block GitHub's IPs; a scheduled task on a home PC ingests them
         run: python -m nazariya.ingest --runner cloud
       - name: Cluster
-        # embeds new articles (incl. home-runner ones already in the DB) and assigns them to events
-        run: python -m nazariya.cluster
+        # embeds new articles (incl. home-runner ones already in the DB) and assigns them to events.
+        # bge-m3 on a CPU runner does ~1 article/s, so embedding is capped per run (newest first) and
+        # any backlog carries over; the home PC task also embeds on its GPU when it runs.
+        run: python -m nazariya.cluster --budget-min 20
       - name: Export site data
         run: python -m nazariya.export
       - name: Health check

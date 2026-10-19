@@ -26,6 +26,11 @@ cmd /c "`"$repo\.venv\Scripts\python.exe`" -m nazariya.ingest --runner home >> `
 $code = $LASTEXITCODE
 Write-Log "end (exit $code)"
 
+# Embed the backlog here (GPU when available; much faster than the cloud's CPU). Assignment to
+# events stays with the cloud workflow, so there is only ever one writer of events.
+cmd /c "`"$repo\.venv\Scripts\python.exe`" -m nazariya.cluster --embed-only --budget-min 20 >> `"$log`" 2>&1"
+Write-Log "embed-only done (exit $LASTEXITCODE)"
+
 # GitHub delays or drops scheduled runs, so also kick the cloud ingest (cluster + export) now.
 # Uses the GitHub CLI's own login on this PC; skipped silently if gh isn't installed.
 if (Get-Command gh -ErrorAction SilentlyContinue) {
