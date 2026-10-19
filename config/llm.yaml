@@ -42,6 +42,10 @@ labellers:
       model: qwen3.5:9b-q4_K_M
       # 2k context (prompts are ~1.3k tokens) leaves room to keep the whole model on the 8 GB GPU
       params: {think: false, options: {num_ctx: 2048}}
+  local_long:  # same local model with a 4k context, for longer prompts (framing/stance)
+    - provider: ollama
+      model: qwen3.5:9b-q4_K_M
+      params: {think: false, options: {num_ctx: 4096}}
   local_old:
     - provider: ollama
       model: qwen2.5:7b

@@ -30,6 +30,10 @@ RULES = CONFIG / "entities" / "linking.yaml"
 CALIBRATION = CONFIG / "entities" / "alias_calibration.yaml"
 SPLIT = re.compile(r"[\s.,;:!?\"()\[\]{}<>|/\\\-–—“”‘’'`…।॥·•]+")
 MAX_ALIAS_TOKENS = 8
+# Bump when matching logic changes, so stored mentions are rescanned (the version also hashes the
+# alias table, rules and calibration files).
+LOGIC_VERSION = b"2"
+PAREN = re.compile(r"\s*\([^)]*\)")
 
 
 # A nasal consonant + virama before another consonant is written interchangeably with anusvara:
@@ -66,9 +70,23 @@ class Linker:
         self.ratio = float(rules.get("prominence_ratio", 3.0))
         raw = entities_path.read_bytes()
         calib = calibration_path.read_bytes() if calibration_path and calibration_path.exists() else b""
-        self.version = hashlib.sha1(raw + rules_path.read_bytes() + calib).hexdigest()[:10]
-        dropped = {(d["alias"], d["qid"]) for d in (yaml.safe_load(calib) or {}).get("dropped", [])} if calib else set()
+        self.version = hashlib.sha1(LOGIC_VERSION + raw + rules_path.read_bytes() + calib).hexdigest()[:10]
+        cal = (yaml.safe_load(calib) or {}) if calib else {}
+        dropped = {(d["alias"], d["qid"]) for d in cal.get("dropped", [])}
+        # With a calibration, a single-word person name needs positive evidence (seen often enough
+        # and usually alongside the full name); rare single words such as given names are not trusted.
+        confirmed = {(d["alias"], d["qid"]) for d in cal.get("kept", [])} if calib else None
         self.entities = {e["qid"]: e for e in map(json.loads, raw.decode("utf-8").splitlines()) if e}
+        for e in self.entities.values():  # "कार्तिक (अभिनेता)" → "कार्तिक": drop Wikipedia-style notes
+            for k in ("label_en", "label_hi"):
+                if e.get(k):
+                    e[k] = PAREN.sub("", e[k]).strip() or e[k]
+        persons = {q for q, e in self.entities.items() if e["type"] in ("person", "foreign_person")}
+
+        def single_ok(word: str, qid: str) -> bool:
+            if (word, qid) in dropped:
+                return False
+            return confirmed is None or qid not in persons or (word, qid) in confirmed
 
         # folded alias tokens → entries; case-sensitive acronyms kept separately
         self.index: dict[tuple[str, ...], set[Entry]] = defaultdict(set)
@@ -79,7 +97,7 @@ class Linker:
                 names.add(e["label_hi"])
             names |= set(e["aliases"]["hi"])
             for name in names:
-                toks = tokenize(name)
+                toks = tokenize(PAREN.sub("", name))
                 if not toks or len(toks) > MAX_ALIAS_TOKENS:
                     continue
                 if is_acronym(name):
@@ -89,7 +107,7 @@ class Linker:
                 key = tuple(normalise(t) for t in toks)
                 if " ".join(key) in blocked or len("".join(key)) <= 3:
                     continue
-                if len(key) == 1 and (key[0], qid) in dropped:
+                if len(key) == 1 and not single_ok(key[0], qid):
                     continue
                 self.index[key].add(Entry(qid, False))
             if e["type"] in ("person", "foreign_person"):
@@ -97,7 +115,7 @@ class Linker:
                     toks = tokenize(label or "")
                     if len(toks) >= 2:
                         sur = normalise(toks[-1])
-                        if len(sur) >= 4 and sur not in common and sur not in blocked and (sur, qid) not in dropped:
+                        if len(sur) >= 4 and sur not in common and sur not in blocked and single_ok(sur, qid):
                             self.index[(sur,)].add(Entry(qid, True))
 
     def _prominent(self, qids: set[str]) -> str | None:
