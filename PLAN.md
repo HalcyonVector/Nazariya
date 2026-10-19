@@ -54,6 +54,17 @@ Frontend: Next.js static export on Vercel / GitHub Pages
 | Blindspots | — | weekly precision@10, bootstrap/τ sensitivity |
 | Fingerprints | — | bootstrap ARI, Procrustes disparity |
 
+### Labelling strategy (revised 2026-10-19)
+- **Build first, label last.** Every component is built and evaluated against LLM silver labels
+  (gpt-oss-120b primary; local Qwen 3.5 9B as an independent second opinion). Reports mark these
+  numbers **provisional**, and every eval script reruns unchanged once gold labels exist.
+- **One human labelling session at the end**, covering all components, kept small: binary
+  questions only, only pairs where the two LLM labellers disagree, plus a blind random sample
+  to estimate the error rate where they agree.
+- **Event pairs are binary** (same event / not). A first pass with a third "same story" class
+  failed: the LLMs read it as "same topic". Story-level grouping will instead link events through
+  shared named entities and time, with its own definition ("same named case or incident").
+
 ## Risks
 Scraper breakage & IP blocks · feed outages → false blindspots · paywalls (never bypass) ·
 syndication inflation · language/region confound · stance-label conceptual errors ·

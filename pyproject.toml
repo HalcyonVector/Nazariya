@@ -15,7 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 pg = ["psycopg[binary]>=3.2"]
 # install CPU torch first: pip install torch --index-url https://download.pytorch.org/whl/cpu
-ml = ["sentence-transformers>=3.0", "numpy>=1.26"]
+ml = ["sentence-transformers>=3.0", "numpy>=1.26", "scikit-learn>=1.5"]
 dev = ["pytest>=8"]
 
 [build-system]

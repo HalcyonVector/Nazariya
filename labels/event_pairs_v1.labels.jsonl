@@ -6,3 +6,16 @@
 {"pair_id": "v1-0006", "label": "unrelated", "labelled_at": "2026-10-18T17:06:53+00:00"}
 {"pair_id": "v1-0007", "label": "unrelated", "labelled_at": "2026-10-18T17:07:01+00:00"}
 {"pair_id": "v1-0008", "label": "same_story", "labelled_at": "2026-10-18T17:07:10+00:00"}
+{"pair_id": "v1-0074", "label": "unrelated", "shown_suggestion": false, "llm_label": "unrelated", "labelled_at": "2026-10-19T15:20:04+00:00"}
+{"pair_id": "v1-0080", "label": "same_event", "shown_suggestion": true, "llm_label": "same_event", "labelled_at": "2026-10-19T15:23:34+00:00"}
+{"pair_id": "v1-0112", "label": "same_story", "shown_suggestion": true, "llm_label": "same_story", "labelled_at": "2026-10-19T15:24:04+00:00"}
+{"pair_id": "v1-0118", "label": "unrelated", "shown_suggestion": true, "llm_label": "same_story", "labelled_at": "2026-10-19T15:20:11+00:00"}
+{"pair_id": "v1-0156", "label": "unrelated", "shown_suggestion": true, "llm_label": "same_story", "labelled_at": "2026-10-19T15:20:24+00:00"}
+{"pair_id": "v1-0159", "label": "unrelated", "shown_suggestion": true, "llm_label": "unrelated", "labelled_at": "2026-10-19T15:20:31+00:00"}
+{"pair_id": "v1-0173", "label": "same_event", "shown_suggestion": true, "llm_label": "same_event", "labelled_at": "2026-10-19T15:23:40+00:00"}
+{"pair_id": "v1-0182", "label": "unrelated", "shown_suggestion": true, "llm_label": "unrelated", "labelled_at": "2026-10-19T15:23:24+00:00"}
+{"pair_id": "v1-0213", "label": "same_event", "shown_suggestion": false, "llm_label": "same_event", "labelled_at": "2026-10-19T15:23:17+00:00"}
+{"pair_id": "v1-0219", "label": "unrelated", "shown_suggestion": true, "llm_label": "same_story", "labelled_at": "2026-10-19T15:19:54+00:00"}
+{"pair_id": "v1-0227", "label": "unrelated", "shown_suggestion": true, "llm_label": "unrelated", "labelled_at": "2026-10-19T15:24:09+00:00"}
+{"pair_id": "v1-0274", "label": "unrelated", "shown_suggestion": true, "llm_label": "unrelated", "labelled_at": "2026-10-19T15:23:04+00:00"}
+{"pair_id": "v1-0305", "label": "unrelated", "shown_suggestion": true, "llm_label": "same_story", "labelled_at": "2026-10-19T15:23:55+00:00"}

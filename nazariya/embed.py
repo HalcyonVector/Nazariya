@@ -23,23 +23,37 @@ def doc_text(title: str, text: str | None, words: int = LEDE_WORDS) -> str:
     return f"{title}\n{lede}".strip()
 
 
-def load(key: str):
-    if key not in _loaded:
-        from sentence_transformers import SentenceTransformer
-
+def load(key: str, device: str | None = None):
+    if device is None:
         import torch
 
         # GPU when present (local dev / labelling), CPU elsewhere (GitHub Actions, home task)
-        model = SentenceTransformer(MODELS[key][0], device="cuda" if torch.cuda.is_available() else "cpu")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    if (key, device) not in _loaded:
+        from sentence_transformers import SentenceTransformer
+
+        model = SentenceTransformer(MODELS[key][0], device=device)
         model.max_seq_length = MAX_TOKENS
-        _loaded[key] = model
-    return _loaded[key]
+        _loaded[(key, device)] = model
+    return _loaded[(key, device)]
 
 
-def embed(key: str, texts: list[str], batch_size: int = 32, progress: bool = False) -> np.ndarray:
+def unload() -> None:
+    """Free cached models (and GPU memory) between models in a comparison run."""
+    _loaded.clear()
+    try:
+        import torch
+
+        torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+
+def embed(key: str, texts: list[str], batch_size: int = 32, progress: bool = False,
+          device: str | None = None) -> np.ndarray:
     """L2-normalised float32 embeddings, so cosine similarity is a dot product."""
     prefix = MODELS[key][1]
-    vecs = load(key).encode(
+    vecs = load(key, device).encode(
         [prefix + t for t in texts], batch_size=batch_size, normalize_embeddings=True,
         convert_to_numpy=True, show_progress_bar=progress,
     )
