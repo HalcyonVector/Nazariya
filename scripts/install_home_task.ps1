@@ -19,7 +19,9 @@ $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(10) `
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 45) -MultipleInstances IgnoreNew
-$principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
+# S4U = "run whether user is logged on or not" without storing a password: the task runs in a
+# non-interactive session, so nothing can ever appear on the desktop (including at plug-in/wake).
+$principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType S4U -RunLevel Limited
 
 Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings `
     -Principal $principal -Description "Ingests Nazariya outlets that block datacenter IPs (runner: home)" -Force | Out-Null
