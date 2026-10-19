@@ -9,8 +9,10 @@ $ErrorActionPreference = "Stop"
 $name = "Nazariya home ingest"
 $script = Join-Path $PSScriptRoot "home_ingest.ps1"
 
-$action = New-ScheduledTaskAction -Execute "powershell.exe" `
-    -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
+# conhost --headless (Windows 10 21H2+/11) gives PowerShell a console that is never shown;
+# `-WindowStyle Hidden` alone still flashes a window on screen for a moment at every run.
+$action = New-ScheduledTaskAction -Execute "conhost.exe" `
+    -Argument "--headless powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`""
 # start 10 minutes from now, then every 2 hours, indefinitely
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(10) `
     -RepetitionInterval (New-TimeSpan -Hours 2)

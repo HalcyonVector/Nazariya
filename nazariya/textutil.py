@@ -71,6 +71,22 @@ def section_of(url: str) -> str | None:
     return None
 
 
+SLUG_RE = re.compile(r"^[^\W_]+(?:[-_][^\W_]+){2,}$")
+
+
+def title_from_url(url: str) -> str:
+    """Headline recovered from a URL slug, for feeds that list URLs without titles (e.g. TOI's
+    sitemap): /city/patna/teenager-held-on-charge-of-raping-minor/articleshow/1.cms →
+    'Teenager held on charge of raping minor'. Empty when no slug-like segment exists."""
+    segs = [s for s in urlsplit(url).path.split("/") if SLUG_RE.match(s.rsplit(".", 1)[0])]
+    if not segs:
+        return ""
+    words = max(segs, key=len).rsplit(".", 1)[0].replace("_", "-").split("-")
+    words = [w for w in words if not (w.isdigit() and len(w) >= 6)]  # drop trailing article ids
+    text = " ".join(words)
+    return text[:1].upper() + text[1:]
+
+
 def detect_lang(text: str, default: str = "en") -> str:
     """Script-based language guess; good enough to separate en/hi/regional scripts."""
     counts: Counter[str] = Counter()

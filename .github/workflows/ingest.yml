@@ -2,19 +2,27 @@ name: ingest
 
 on:
   schedule:
-    - cron: "17 */2 * * *"  # every 2 hours, off the top of the hour
+    # hourly: GitHub delays or drops scheduled runs under load (gaps of 3-8 h were seen at "every 2 h");
+    # the home PC task also triggers this workflow after each of its runs
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 concurrency:
   group: ingest
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      HF_HOME: ${{ github.workspace }}/.hf
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,10 +35,24 @@ jobs:
             echo "::error::Add a DATABASE_URL repository secret (Neon or Supabase Postgres connection string)"
             exit 1
           fi
-      - run: pip install -e ".[pg]"
+      - name: Install
+        # CPU-only torch keeps the install small; runners have no GPU
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[pg,ml]"
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: .hf
+          key: hf-bge-m3-v1
       - name: Ingest
         # outlets marked `runner: home` block GitHub's IPs; a scheduled task on a home PC ingests them
         run: python -m nazariya.ingest --runner cloud
+      - name: Cluster
+        # embeds new articles (incl. home-runner ones already in the DB) and assigns them to events
+        run: python -m nazariya.cluster
+      - name: Export site data
+        run: python -m nazariya.export
       - name: Health check
         # fails the job (→ GitHub emails you) when a cloud outlet has had no successful fetch for 6h
         run: python -m nazariya.health --fail-on-down
@@ -40,3 +62,20 @@ jobs:
           name: health-report
           path: reports/health.md
           retention-days: 14
+      - name: Upload site
+        # publishing is opt-in: set the repository variable PAGES_ENABLED=true after enabling Pages
+        if: vars.PAGES_ENABLED == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: ingest
+    if: vars.PAGES_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

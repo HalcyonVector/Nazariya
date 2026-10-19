@@ -11,8 +11,8 @@ import os
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    JSON, BigInteger, Boolean, Column, DateTime, ForeignKey, Index, Integer, MetaData,
-    String, Table, Text, create_engine, select,
+    JSON, BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, LargeBinary,
+    MetaData, String, Table, Text, create_engine, select,
 )
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.engine import Connection, Engine
@@ -71,6 +71,43 @@ article_text = Table(
     Column("text", Text, nullable=False),
     Column("expires_at", DateTime(timezone=True), nullable=False),
 )
+
+# ---------- event clustering ----------
+
+# Embeddings for recent articles only (purged after VECTOR_TTL in cluster.py; ~2 KB each).
+article_vectors = Table(
+    "article_vectors", metadata,
+    Column("article_id", Integer, ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True),
+    Column("model", String(40), nullable=False),
+    Column("vec", LargeBinary, nullable=False),  # float16, L2-normalised
+    Column("text_kind", String(10), nullable=False),  # lede (headline + body start) | headline
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+events = Table(
+    "events", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("first_seen", DateTime(timezone=True), nullable=False),  # earliest member published_at
+    Column("last_seen", DateTime(timezone=True), nullable=False),  # latest member published_at
+    Column("n_articles", Integer, nullable=False),
+    Column("n_outlets", Integer, nullable=False),
+    Column("title", Text),  # member headline closest to the centroid
+    Column("rep_article_id", Integer),
+    Column("centroid", LargeBinary),  # float32 sum of member vectors; NULL once the event closes
+    Column("model", String(40), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_events_last_seen", events.c.last_seen)
+
+article_events = Table(
+    "article_events", metadata,
+    Column("article_id", Integer, ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True),
+    Column("event_id", Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False),
+    Column("similarity", Float),  # to the event centroid at assignment time
+    Column("method", String(10), nullable=False),  # online | merge
+    Column("assigned_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_article_events_event", article_events.c.event_id)
 
 runs = Table(
     "runs", metadata,

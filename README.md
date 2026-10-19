@@ -16,6 +16,10 @@ Set `DATABASE_URL` to a Postgres connection string (Neon/Supabase) and install `
 python -m nazariya.probe --write-feeds   # discover/verify sources → config/feeds.yaml, reports/feed_probe.md
 python -m nazariya.ingest                # discover → filter → extract → dedup (one run)
 python -m nazariya.health                # per-outlet health → reports/health.md
+python -m nazariya.cluster               # embed new articles (bge-m3) and assign them to events
+python -m nazariya.export                # JSON snapshots for the static site → site/data/
+python -m nazariya.eval.embeddings       # embedding model comparison → reports/embedding_bakeoff.md
+python -m nazariya.eval.clustering       # τ sweep for clustering → reports/clustering_eval.md
 pytest -q
 ```
 
@@ -34,6 +38,25 @@ pytest -q
 3. **Dedup**: 64-bit SimHash. Same outlet ≤3 bits → `duplicate`; other outlet ≤6 bits → `syndicated_of`.
    Wire bylines (PTI/ANI/IANS/UNI/Reuters/AFP, incl. Hindi forms) → `agency`.
 4. **Dates**: future timestamps (IST labelled as UTC, e.g. Dainik Bhaskar) are shifted and flagged.
+
+## Events and the site (week 2)
+5. **Embed**: every finished article from the last 72 h (body lede when we have it, otherwise headline
+   + feed summary, so headline-only outlets still count as coverage), with `bge-m3` (best of four
+   multilingual models on English–Hindi same-event pairs). Vectors are kept 5 days.
+6. **Cluster**: online, centroid-based. In publication order, each article joins the most similar event
+   active within 72 h if cosine similarity ≥ τ = 0.65 (best pairwise F1 on labelled pairs), otherwise it
+   starts a new event. Large running stories (e.g. a stampede and its aftermath) end up as one event.
+7. **Export → site**: `site/` is a static page (no build step) reading `site/data/*.json`. Each story
+   shows a coverage strip, one cell per outlet: covered, wire copy only, not covered, or *no data*
+   (no successful fetch from that outlet during the story's window). Clusters where one outlet
+   supplies most articles (templated local items) are left out.
+
+Preview locally: `python -m nazariya.export` then `python -m http.server -d site 8000`.
+Publishing is opt-in: enable GitHub Pages (source: GitHub Actions) and set the repository variable
+`PAGES_ENABLED=true`; the ingest workflow then deploys the site after every run.
+
+All evaluation numbers are **provisional** until the human labelling session at the end of the build
+(see PLAN.md, "Labelling strategy").
 
 ## Labelling (event pairs)
 ```bash

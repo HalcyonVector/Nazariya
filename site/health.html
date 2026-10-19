@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nazariya · Sources</title>
+<link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <h1><a href="./">Nazariya</a></h1>
+    <span class="tag">Which outlets we track, and whether we can currently read them</span>
+    <nav><a href="./">Stories</a><a href="health.html" aria-current="page">Sources</a></nav>
+  </div>
+</header>
+<main class="wrap">
+  <p class="status" id="status">Loading…</p>
+  <div class="table-scroll">
+    <table class="health">
+      <thead><tr><th>Outlet</th><th>Language</th><th>Role</th><th>Status</th><th>Last successful fetch</th><th>New articles (24 h)</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+<footer class="site">
+  <div class="wrap">
+    <p><b>DOWN</b>: no successful fetch for 6 hours. Stories from that period show this outlet as
+    "no data", never as "not covered". <b>FALLBACK</b>: we're reading a backup source (often headlines
+    only). Outlets fetched from a home connection (because they block cloud servers) go DOWN when that
+    machine is off.</p>
+  </div>
+</footer>
+<script>
+"use strict";
+const cls = (s) => (s === "ok" ? "st-ok" : s.includes("DOWN") ? "st-bad" : "st-warn");
+fetch("data/outlets.json", { cache: "no-store" }).then((r) => r.json()).then(({ meta, outlets }) => {
+  const rows = document.getElementById("rows");
+  outlets.sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "outlet" ? -1 : 1));
+  for (const o of outlets) {
+    const tr = document.createElement("tr");
+    const cells = [o.name + (o.runner === "home" ? " ⌂" : ""), o.lang === "hi" ? "Hindi" : "English",
+      o.role, o.status, o.last_ok_h == null ? "—" : `${o.last_ok_h} h ago`, String(o.new_24h)];
+    cells.forEach((t, i) => {
+      const td = document.createElement("td");
+      td.textContent = t;
+      if (i === 3) td.className = cls(o.status);
+      tr.append(td);
+    });
+    rows.append(tr);
+  }
+  document.getElementById("status").textContent =
+    `${outlets.filter((o) => o.status === "ok").length} of ${outlets.length} sources healthy · ⌂ = fetched from a home connection`;
+}).catch(() => { document.getElementById("status").textContent = "Couldn't load data."; });
+</script>
+</body>
+</html>

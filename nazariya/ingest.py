@@ -39,7 +39,7 @@ from .net import Fetcher, make_client, user_agent_for
 from .sources import Item, fetch_source
 from .textutil import (
     canonical_url, detect_agency, detect_lang, fix_published, hamming, in_scope, path_segments,
-    rewrite_host, section_of, simhash, to_signed64, to_unsigned64,
+    rewrite_host, section_of, simhash, title_from_url, to_signed64, to_unsigned64,
 )
 
 MAX_ITEM_AGE = timedelta(days=3)  # ignore older sitemap/feed entries
@@ -138,7 +138,8 @@ class Ingester:
                 candidates.setdefault(url, {
                     "outlet_id": o["id"],
                     "url": url,
-                    "title": it.title,
+                    # some sitemaps (TOI) list URLs without headlines; the slug is the headline
+                    "title": it.title or title_from_url(url),
                     "summary": it.summary or None,
                     "lang": detect_lang(f"{it.title} {it.summary}", default=o["lang"]),
                     "section": None if kind == "gnews" else section_of(url),

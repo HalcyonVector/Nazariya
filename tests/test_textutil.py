@@ -85,3 +85,12 @@ def test_fix_published():
     assert flag and fixed == ist_as_utc - timedelta(hours=5, minutes=30)
     far_future = NOW + timedelta(days=2)
     assert fix_published(far_future, NOW) == (NOW, True)
+
+
+def test_title_from_url():
+    from nazariya.textutil import title_from_url
+    assert title_from_url(
+        "https://timesofindia.indiatimes.com/city/patna/teenager-held-on-charge-of-raping-minor-in-west-champaran/articleshow/134969514.cms"
+    ) == "Teenager held on charge of raping minor in west champaran"
+    assert title_from_url("https://x.com/news/123456.cms") == ""
+    assert title_from_url("https://x.com/india/pm-visits-kerala-1234567.html") == "Pm visits kerala"

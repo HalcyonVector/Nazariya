@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nazariya · Indian news coverage</title>
+<meta name="description" content="How Indian news outlets, in English and Hindi, cover the same events.">
+<link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <h1><a href="./">Nazariya</a></h1>
+    <span class="tag">Who covered what: the same events across ~40 Indian outlets, in English and Hindi</span>
+    <nav><a href="./" aria-current="page">Stories</a><a href="health.html">Sources</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="controls" role="search">
+    <input type="search" id="q" placeholder="Search headlines…" aria-label="Search headlines">
+    <button class="chip" data-lang="all" aria-pressed="true">All</button>
+    <button class="chip" data-lang="cross" aria-pressed="false">English + Hindi</button>
+    <button class="chip" data-lang="en" aria-pressed="false">English only</button>
+    <button class="chip" data-lang="hi" aria-pressed="false">Hindi only</button>
+    <select id="min" aria-label="Minimum number of outlets">
+      <option value="2">2+ outlets</option>
+      <option value="3" selected>3+ outlets</option>
+      <option value="5">5+ outlets</option>
+      <option value="10">10+ outlets</option>
+    </select>
+  </div>
+  <div class="legend" aria-hidden="true">
+    <span><i class="cell covered"></i>covered</span>
+    <span><i class="cell wire"></i>wire copy only</span>
+    <span><i class="cell"></i>not covered</span>
+    <span><i class="cell nodata"></i>no data (we couldn't fetch this outlet then)</span>
+  </div>
+  <p class="status" id="status">Loading…</p>
+  <div id="stories"></div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <p>Articles are grouped into events automatically: multilingual sentence embeddings (bge-m3) of each
+    headline and opening paragraph, clustered online with a similarity threshold. Groupings can be wrong.
+    Each strip shows only whether an outlet carried the story, not how it framed it.</p>
+    <p>We store headlines, links and derived data only, never article text. Source code and evaluation
+    reports: <a href="https://github.com/HalcyonVector/Nazariya">github.com/HalcyonVector/Nazariya</a>.</p>
+  </div>
+</footer>
+<script src="app.js?v=2"></script>
+</body>
+</html>

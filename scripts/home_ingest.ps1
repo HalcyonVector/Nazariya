@@ -25,4 +25,11 @@ Write-Log "start"
 cmd /c "`"$repo\.venv\Scripts\python.exe`" -m nazariya.ingest --runner home >> `"$log`" 2>&1"
 $code = $LASTEXITCODE
 Write-Log "end (exit $code)"
+
+# GitHub delays or drops scheduled runs, so also kick the cloud ingest (cluster + export) now.
+# Uses the GitHub CLI's own login on this PC; skipped silently if gh isn't installed.
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+    cmd /c "gh workflow run ingest -R HalcyonVector/Nazariya >> `"$log`" 2>&1"
+    Write-Log "triggered cloud ingest (gh exit $LASTEXITCODE)"
+}
 exit $code
