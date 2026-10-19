@@ -1,0 +1,5 @@
+# Extra names for entities whose Wikidata labels/aliases miss common news usage.
+# Keyed by the entity's English Wikidata label; merged in by nazariya.entities.build.
+National Capital Territory of Delhi:
+  en: [Delhi, New Delhi]
+  hi: [दिल्ली, नई दिल्ली]

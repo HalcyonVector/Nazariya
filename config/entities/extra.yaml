@@ -1,0 +1,47 @@
+# Hand-picked entities beyond the Wikidata class queries (politicians, parties, states/UTs).
+# Each name is resolved to a QID with Wikidata search at build time. `expect` (regex) must match
+# the item's English description and `reject` (regex) must not; otherwise the build stops so a
+# wrong match can't slip in. Every match is printed for review.
+institution:
+  - {name: Supreme Court of India, expect: court}
+  - {name: Election Commission of India, expect: election}
+  - {name: Central Bureau of Investigation, expect: Indian}
+  - {name: Enforcement Directorate, expect: India}
+  - {name: Reserve Bank of India, expect: bank}
+  - {name: National Investigation Agency, expect: India}
+  - {name: Lok Sabha, expect: house, reject: representative|member}
+  - {name: Rajya Sabha, expect: house, reject: representative|member}
+  - {name: Indian Army, expect: India}
+  - {name: Securities and Exchange Board of India, expect: authority|regulat, reject: act of}
+  - {name: NITI Aayog, expect: India}
+organisation:
+  - {name: Rashtriya Swayamsevak Sangh, expect: organi}
+  - {name: Vishva Hindu Parishad, expect: organi}
+  - {name: Bajrang Dal, expect: ""}
+  - {name: Adani Group, expect: ""}
+  - {name: Reliance Industries, expect: ""}
+  - {name: Tata Group, expect: ""}
+country:
+  - {name: Pakistan, expect: country|sovereign state}
+  - {name: People's Republic of China, expect: country|sovereign state}
+  - {name: United States, expect: country|sovereign state}
+  - {name: Bangladesh, expect: country|sovereign state}
+  - {name: Nepal, expect: country|sovereign state}
+  - {name: Sri Lanka, expect: country|sovereign state}
+  - {name: Russia, expect: country|sovereign state}
+  - {name: Ukraine, expect: country|sovereign state}
+  - {name: Israel, expect: country|sovereign state}
+  - {name: Iran, expect: country|sovereign state}
+  - {name: Afghanistan, expect: country|sovereign state}
+  - {name: Canada, expect: country|sovereign state}
+  - {name: United Kingdom, expect: country|sovereign state}
+  - {name: Maldives, expect: country|sovereign state}
+  - {name: Myanmar, expect: country|sovereign state}
+foreign_person:
+  - {name: Donald Trump, expect: president}
+  - {name: Vladimir Putin, expect: president}
+  - {name: Xi Jinping, expect: ""}
+  - {name: Shehbaz Sharif, expect: ""}
+  - {name: Benjamin Netanyahu, expect: ""}
+  - {name: Volodymyr Zelenskyy, expect: ""}
+  - {name: Muhammad Yunus, expect: ""}

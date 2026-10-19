@@ -109,6 +109,35 @@ article_events = Table(
 )
 Index("ix_article_events_event", article_events.c.event_id)
 
+# ---------- entities ----------
+
+entities = Table(
+    "entities", metadata,
+    Column("qid", String(20), primary_key=True),  # Wikidata id
+    Column("type", String(20), nullable=False),  # person | party | state | institution | ...
+    Column("label_en", Text, nullable=False),
+    Column("label_hi", Text),
+    Column("description", Text),
+    Column("sitelinks", Integer),
+)
+
+mentions = Table(
+    "mentions", metadata,
+    Column("article_id", Integer, ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True),
+    Column("qid", String(20), ForeignKey("entities.qid"), primary_key=True),
+    Column("n", Integer, nullable=False),  # mentions in headline + body
+    Column("in_title", Boolean, nullable=False),
+)
+Index("ix_mentions_qid", mentions.c.qid)
+
+entity_scans = Table(
+    "entity_scans", metadata,
+    Column("article_id", Integer, ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True),
+    Column("version", String(12), nullable=False),  # linker version (hash of alias table + rules)
+    Column("text_kind", String(10), nullable=False),  # body | summary | headline
+    Column("scanned_at", DateTime(timezone=True), nullable=False),
+)
+
 runs = Table(
     "runs", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),

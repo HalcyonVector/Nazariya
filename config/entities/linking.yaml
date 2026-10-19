@@ -1,0 +1,98 @@
+# Linker rules (nazariya/entities/linker.py). Reviewable: every rule here changes which links exist.
+
+# Aliases never used, in any language (lowercased / normalised). Longer names always win over
+# shorter ones ("Trinamool Congress" beats "Congress"), so only genuinely misleading ones go here.
+blocked_aliases:
+  - आप        # AAP's Hindi name, but also the everyday pronoun "you"
+  - god's own country
+
+# Surnames that are too common to identify anyone on their own (derived surname aliases are skipped).
+common_surnames:
+  - singh
+  - kumar
+  - yadav
+  - patel
+  - sharma
+  - gupta
+  - reddy
+  - rao
+  - das
+  - khan
+  - ali
+  - ahmed
+  - verma
+  - mishra
+  - pandey
+  - tiwari
+  - chauhan
+  - thakur
+  - joshi
+  - jain
+  - nair
+  - menon
+  - pillai
+  - roy
+  - sinha
+  - prasad
+  - devi
+  - lal
+  - chand
+  - nath
+  - raj
+  - babu
+  - choudhary
+  - chaudhary
+  - chowdhury
+  - mukherjee
+  - banerjee
+  - ghosh
+  - bose
+  - sen
+  - dutta
+  - iyer
+  - naidu
+  - gowda
+  - shetty
+  - hegde
+  - pawar
+  - deshmukh
+  - desai
+  - mehta
+  - patil
+  - jadhav
+  - shinde
+  - sharif
+  - सिंह
+  - कुमार
+  - यादव
+  - पटेल
+  - शर्मा
+  - गुप्ता
+  - राव
+  - दास
+  - खान
+  - अली
+  - वर्मा
+  - मिश्रा
+  - पांडे
+  - पाण्डेय
+  - तिवारी
+  - चौहान
+  - ठाकुर
+  - जोशी
+  - जैन
+  - रॉय
+  - सिन्हा
+  - प्रसाद
+  - देवी
+  - लाल
+  - पाटिल
+  - शिंदे
+  - पवार
+
+# An ambiguous name (several candidates, none also named in full in the article) goes to the most
+# prominent candidate only if it has at least this many times the Wikipedia sitelinks of the next.
+prominence_ratio: 3.0
+
+# Entity types allowed to keep short (≤ 4 letter) all-caps acronyms, matched case-sensitively.
+acronym_types: [party, institution, organisation]
