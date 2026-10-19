@@ -7,7 +7,7 @@ const GROUPS = [
   { label: "Reference", test: (o) => o.role === "reference" },
 ];
 
-const state = { stories: [], outlets: [], byId: {}, lang: "all", min: 3, q: "" };
+const state = { stories: [], outlets: [], byId: {}, lang: "all", min: 3, q: "", entity: null };
 const $ = (id) => document.getElementById(id);
 
 function ago(iso) {
@@ -81,10 +81,22 @@ function articleList(story) {
   return el("details", { class: "articles" }, el("summary", { text: summary }), list);
 }
 
+function entityChips(story) {
+  if (!story.entities || !story.entities.length) return null;
+  const wrap = el("div", { class: "entities" });
+  for (const e of story.entities) {
+    const b = el("button", { class: "ent", type: "button", title: `Show stories mentioning ${e.label}` }, e.label);
+    b.addEventListener("click", () => { state.entity = { qid: e.qid, label: e.label }; render(); window.scrollTo(0, 0); });
+    wrap.append(b);
+  }
+  return wrap;
+}
+
 function card(story) {
   const langs = story.langs.map((l) => (l === "hi" ? "Hindi" : l === "en" ? "English" : l)).join(" + ");
   return el("article", { class: "story" },
     el("h2", { text: story.title }),
+    entityChips(story),
     el("div", { class: "meta" },
       el("span", { text: `${story.n_outlets} outlets` }),
       el("span", { text: `${story.n_articles} articles` }),
@@ -103,8 +115,12 @@ function render() {
     if (state.lang === "en" && (has.has("hi") || !has.has("en"))) return false;
     if (state.lang === "hi" && (has.has("en") || !has.has("hi"))) return false;
     if (q && !s.articles.some((a) => a.title.toLowerCase().includes(q))) return false;
+    if (state.entity && !(s.entities || []).some((e) => e.qid === state.entity.qid)) return false;
     return true;
   });
+  const banner = $("entity-filter");
+  banner.hidden = !state.entity;
+  if (state.entity) $("entity-name").textContent = state.entity.label;
   $("stories").replaceChildren(...shown.map(card));
   $("status").textContent = `${shown.length} of ${state.stories.length} stories from the last ${state.meta.window_hours} hours · updated ${ago(state.meta.generated_at)}`;
 }
@@ -131,5 +147,6 @@ document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", ()
   render();
 }));
 $("min").addEventListener("change", (e) => { state.min = Number(e.target.value); render(); });
+$("entity-clear").addEventListener("click", () => { state.entity = null; render(); });
 $("q").addEventListener("input", (e) => { state.q = e.target.value.trim(); render(); });
 main();

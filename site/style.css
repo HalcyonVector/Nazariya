@@ -68,6 +68,13 @@ header.site nav a[aria-current="page"] { color: var(--text); font-weight: 600; }
 .story h2 { font-size: 17px; line-height: 1.35; margin: 0 0 4px; }
 .story .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
 
+.entities { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.ent { font: inherit; font-size: 12px; color: var(--text); background: transparent; border: 1px solid var(--line);
+       border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.ent:hover { border-color: var(--muted); }
+.entity-filter { display: flex; gap: 10px; align-items: center; font-size: 14px; margin: 4px 0; }
+.entity-filter[hidden] { display: none; }
+
 .strip { display: flex; gap: 14px; flex-wrap: wrap; }
 .group { display: flex; flex-direction: column; gap: 4px; }
 .group .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }

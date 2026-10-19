@@ -23,12 +23,15 @@ from sqlalchemy import select
 
 from .cluster import MODEL, TAU
 from .config import ROOT, load_outlets, runner_of
-from .db import article_events, articles, as_utc, events, fetch_runs, get_engine
+from sqlalchemy import func
+
+from .db import article_events, articles, as_utc, entities, events, fetch_runs, get_engine, mentions
 from .health import compute as compute_health
 
 STORY_WINDOW = timedelta(hours=48)
 MIN_OUTLETS = 2
 MAX_STORIES = 200
+MAX_ENTITIES = 6
 HALF_LIFE_H = 18  # ranking: an 18-hour-old story counts half as much as a fresh one
 NO_DATA_SLACK = timedelta(hours=12)  # a fetch this soon after the story's last article still counts
 # Templated hyper-local items from one paper (e.g. dozens of temple-aarti reports) cluster together;
@@ -59,6 +62,15 @@ def export(now: datetime | None = None) -> dict:
             .join(articles, articles.c.id == article_events.c.article_id)
             .where(article_events.c.event_id.in_([e.id for e in evs]))
         ).all() if evs else []
+        ent_rows = conn.execute(
+            select(article_events.c.event_id, mentions.c.qid, entities.c.label_en, entities.c.label_hi,
+                   entities.c.type, func.count().label("arts"))
+            .join(mentions, mentions.c.article_id == article_events.c.article_id)
+            .join(entities, entities.c.qid == mentions.c.qid)
+            .where(article_events.c.event_id.in_([e.id for e in evs]))
+            .group_by(article_events.c.event_id, mentions.c.qid, entities.c.label_en, entities.c.label_hi,
+                      entities.c.type)
+        ).all() if evs else []
         fetches = conn.execute(
             select(fetch_runs.c.outlet_id, fetch_runs.c.fetched_at)
             .where(fetch_runs.c.accepted.is_(True), fetch_runs.c.fetched_at >= now - STORY_WINDOW - timedelta(days=1))
@@ -70,6 +82,9 @@ def export(now: datetime | None = None) -> dict:
     by_event: dict[int, list] = defaultdict(list)
     for m in members:
         by_event[m.event_id].append(m)
+    ents_by_event: dict[int, list] = defaultdict(list)
+    for r in ent_rows:
+        ents_by_event[r.event_id].append(r)
 
     stories = []
     for e in evs:
@@ -95,6 +110,10 @@ def export(now: datetime | None = None) -> dict:
             "score": round(e.n_outlets * math.pow(0.5, age_h / HALF_LIFE_H), 3),
             "langs": sorted({m.lang for m in arts if m.lang}),
             "no_data": no_data,
+            # entities mentioned in ≥ 2 member articles and ≥ 10% of them, most-mentioned first
+            "entities": [{"qid": r.qid, "label": r.label_en, "label_hi": r.label_hi, "type": r.type, "articles": r.arts}
+                         for r in sorted(ents_by_event[e.id], key=lambda r: -r.arts)
+                         if r.arts >= max(2, 0.1 * len(arts))][:MAX_ENTITIES],
             "articles": [{
                 "outlet": m.outlet_id, "title": m.title, "url": m.url, "lang": m.lang,
                 "published": iso(m.published_at), "agency": m.agency, "access": m.access,

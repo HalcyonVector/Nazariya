@@ -53,6 +53,9 @@ jobs:
         # bge-m3 on a CPU runner does ~1 article/s, so embedding is capped per run (newest first) and
         # any backlog carries over; the home PC task also embeds on its GPU when it runs.
         run: python -m nazariya.cluster --budget-min 20
+      - name: Link entities
+        # dictionary linker over the Wikidata alias table; milliseconds per article on CPU
+        run: python -m nazariya.entities.run
       - name: Export site data
         run: python -m nazariya.export
       - name: Health check

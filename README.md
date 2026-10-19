@@ -17,6 +17,7 @@ python -m nazariya.probe --write-feeds   # discover/verify sources → config/fe
 python -m nazariya.ingest                # discover → filter → extract → dedup (one run)
 python -m nazariya.health                # per-outlet health → reports/health.md
 python -m nazariya.cluster               # embed new articles (bge-m3) and assign them to events
+python -m nazariya.entities.run          # link people/parties/states/institutions in new articles
 python -m nazariya.export                # JSON snapshots for the static site → site/data/
 python -m nazariya.eval.embeddings       # embedding model comparison → reports/embedding_bakeoff.md
 python -m nazariya.eval.clustering       # τ sweep for clustering → reports/clustering_eval.md
@@ -50,6 +51,20 @@ pytest -q
    shows a coverage strip, one cell per outlet: covered, wire copy only, not covered, or *no data*
    (no successful fetch from that outlet during the story's window). Clusters where one outlet
    supplies most articles (templated local items) are left out.
+
+8. **Entities** (week 3): a dictionary linker over a Wikidata alias table of ~1,500 entities (Indian
+   politicians, parties, states/UTs, key institutions, a few countries and foreign leaders) with English
+   and Hindi names. Hindi spellings are normalised (गाँधी = गांधी, नरेन्द्र = नरेंद्र); short acronyms
+   count only for parties/institutions and only in capitals; a surname like "Modi" goes to someone
+   named in full in the article, or to a clearly more prominent candidate, or nowhere. Single-word
+   names that are mostly ordinary words (पूजा, गंभीर, प्रधान…) are dropped by a corpus calibration.
+   ```bash
+   python -m nazariya.entities.build       # rebuild config/entities/entities.jsonl from Wikidata
+   python -m nazariya.entities.calibrate   # recompute config/entities/alias_calibration.yaml
+   python -m nazariya.eval.entities        # LLM-judged precision/recall → reports/entities_eval.md
+   ```
+   All three outputs are committed so every link can be traced. A neural NER model (GLiNER) was in the
+   original plan; it was replaced because it would be as slow on CI CPUs as the embedding model.
 
 Preview locally: `python -m nazariya.export` then `python -m http.server -d site 8000`.
 Publishing is opt-in: enable GitHub Pages (source: GitHub Actions) and set the repository variable

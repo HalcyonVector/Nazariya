@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nazariya · Indian news coverage</title>
 <meta name="description" content="How Indian news outlets, in English and Hindi, cover the same events.">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <header class="site">
@@ -36,6 +36,8 @@
     <span><i class="cell"></i>not covered</span>
     <span><i class="cell nodata"></i>no data (we couldn't fetch this outlet then)</span>
   </div>
+  <p class="entity-filter" id="entity-filter" hidden>Stories mentioning <b id="entity-name"></b>
+    <button type="button" class="chip" id="entity-clear">Clear</button></p>
   <p class="status" id="status">Loading…</p>
   <div id="stories"></div>
 </main>
@@ -44,11 +46,13 @@
   <div class="wrap">
     <p>Articles are grouped into events automatically: multilingual sentence embeddings (bge-m3) of each
     headline and opening paragraph, clustered online with a similarity threshold. Groupings can be wrong.
+    Names under each headline are people, parties and institutions linked to Wikidata with a published
+    alias table; links can be wrong too.
     Each strip shows only whether an outlet carried the story, not how it framed it.</p>
     <p>We store headlines, links and derived data only, never article text. Source code and evaluation
     reports: <a href="https://github.com/HalcyonVector/Nazariya">github.com/HalcyonVector/Nazariya</a>.</p>
   </div>
 </footer>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
