@@ -7,6 +7,25 @@ const GROUPS = [
   { label: "Reference", test: (o) => o.role === "reference" },
 ];
 
+const FRAME_NAMES = {
+  economic: "Economic", capacity_resources: "Resources", morality: "Morality", fairness_equality: "Fairness",
+  legality: "Legality", policy: "Policy", crime_punishment: "Crime", security_defense: "Security",
+  health_safety: "Health & safety", quality_of_life: "Quality of life", cultural_identity: "Cultural identity",
+  public_opinion: "Public opinion", political: "Political", external_reputation: "Foreign relations", other: "Other",
+};
+
+function frameLine(story) {
+  const entries = Object.entries(story.frames || {});
+  if (!entries.length) return null;
+  const line = el("p", { class: "frames", title: "Each outlet counted once, by the frame it used most on this story (automatic, provisional)" });
+  line.append(el("span", { class: "label", text: "Framed as " }));
+  entries.slice(0, 4).forEach(([f, n], i) => {
+    if (i) line.append(" · ");
+    line.append(el("b", { text: FRAME_NAMES[f] || f }), ` ${n}`);
+  });
+  return line;
+}
+
 const state = { stories: [], outlets: [], byId: {}, lang: "all", min: 3, q: "", entity: null };
 const $ = (id) => document.getElementById(id);
 
@@ -43,7 +62,8 @@ function strip(story) {
       if (arts) {
         const allWire = arts.every((a) => a.syndicated || a.agency);
         cls += allWire ? " wire" : " covered";
-        tip = `${o.name}: ${arts[0].title}${arts.length > 1 ? ` (+${arts.length - 1} more)` : ""}${allWire ? " [wire copy]" : ""}`;
+        const fr = (story.outlet_frames || {})[o.id];
+        tip = `${o.name}${fr ? ` [${FRAME_NAMES[fr] || fr}]` : ""}: ${arts[0].title}${arts.length > 1 ? ` (+${arts.length - 1} more)` : ""}${allWire ? " [wire copy]" : ""}`;
       } else if (noData.has(o.id)) {
         cls += " nodata";
         tip = `${o.name}: no data for this period`;
@@ -71,6 +91,8 @@ function articleList(story) {
     if (a.agency) badges.push(a.agency);
     else if (a.syndicated) badges.push("wire copy");
     if (a.access === "headline_only") badges.push("headline only");
+    const frame = (story.outlet_frames || {})[outlet];
+    if (frame) badges.push(FRAME_NAMES[frame] || frame);
     if (arts.length > 1) badges.push(`+${arts.length - 1} more`);
     const link = el("a", { href: a.url, target: "_blank", rel: "noopener noreferrer", lang: a.lang || "" }, a.title);
     list.append(el("li", {},
@@ -103,6 +125,7 @@ function card(story) {
       el("span", { text: langs }),
       el("span", { text: `updated ${ago(story.last_seen)}` })),
     strip(story),
+    frameLine(story),
     articleList(story));
 }
 

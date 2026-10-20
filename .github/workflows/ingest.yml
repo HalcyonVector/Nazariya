@@ -56,6 +56,9 @@ jobs:
       - name: Link entities
         # dictionary linker over the Wikidata alias table; milliseconds per article on CPU
         run: python -m nazariya.entities.run
+      - name: Predict frames
+        # logistic regression over the stored bge-m3 vectors (models/framing_bge_lr.npz); no extra model
+        run: python -m nazariya.framing.infer
       - name: Export site data
         run: python -m nazariya.export
       - name: Health check

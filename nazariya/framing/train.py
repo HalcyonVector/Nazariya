@@ -7,7 +7,8 @@ Splits: by event (all articles about one event fall on one side), so the model c
 memorising the event. The articles labelled by the reference labeller (gpt-oss) are always held out
 and used as an independent test of agreement with a different, stronger model.
 
-Models: TF-IDF + logistic regression baseline, then fine-tuned transformers (XLM-R base, MuRIL).
+Models: TF-IDF + logistic regression baseline, bge-m3 embeddings + logistic regression, and
+fine-tuned transformers (XLM-R base, MuRIL) with a primary-frame cross-entropy + secondary BCE loss.
 
 Usage:
     python -m nazariya.framing.train                       # all models → reports/framing_eval.md
@@ -32,7 +33,9 @@ from .silver import SAMPLE, load_items
 
 INPUT_CHARS = 2000
 BASES = {"xlmr": "FacebookAI/xlm-roberta-base", "muril": "google/muril-base-cased"}
-MODELS_DIR = ROOT / "data" / "models"
+MODELS_DIR = ROOT / "data" / "models"  # fine-tuned transformers (large, not committed)
+# production frame model: logistic regression on bge-m3 article vectors (small, committed)
+PROD_MODEL = ROOT / "models" / "framing_bge_lr.npz"
 
 
 def load_dataset(train_labeller: str, ref_labeller: str):
@@ -102,6 +105,46 @@ def run_tfidf(split) -> tuple[dict, dict]:
     return score(predict(split["val"]), split["val"]), score(predict(split["ref"]), split["ref"])
 
 
+def run_embed_lr(split) -> tuple[dict, dict]:
+    """bge-m3 sentence embeddings + logistic regression: strong when labelled data is scarce."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.multiclass import OneVsRestClassifier
+
+    from ..embed import doc_text, embed, unload
+
+    def X(data):
+        # exactly what the clustering step embeds (headline + first 200 words), so production can
+        # reuse the stored article vectors instead of running another model
+        texts = [doc_text(*(d[1].partition("\n")[::2])) for d in data]
+        return embed("bge-m3", texts, batch_size=32)
+
+    Xtr = X(split["train"])
+    Y = np.stack([d[2] for d in split["train"]])
+    keep = Y.sum(0) > 0
+    clf = OneVsRestClassifier(LogisticRegression(max_iter=3000, C=2.0, class_weight="balanced")).fit(Xtr, Y[:, keep])
+    prim = LogisticRegression(max_iter=3000, C=2.0, class_weight="balanced").fit(Xtr, [d[3] for d in split["train"]])
+
+    def predict(data):
+        x = X(data)
+        p = np.zeros((len(data), len(FRAMES)))
+        p[:, keep] = clf.predict_proba(x)
+        # primary from the dedicated multi-class model: put its argmax on top
+        top = prim.classes_[prim.predict_proba(x).argmax(1)]
+        p[np.arange(len(data)), top] = p.max(1) + 1e-3
+        return p
+    res = score(predict(split["val"]), split["val"]), score(predict(split["ref"]), split["ref"])
+    unload()
+    PROD_MODEL.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        PROD_MODEL, frames=np.array(FRAMES), keep=keep,
+        ovr_coef=np.stack([e.coef_[0] for e in clf.estimators_]).astype(np.float32),
+        ovr_intercept=np.array([e.intercept_[0] for e in clf.estimators_], dtype=np.float32),
+        prim_coef=prim.coef_.astype(np.float32), prim_intercept=prim.intercept_.astype(np.float32),
+        prim_classes=prim.classes_, version=np.array(datetime.now(timezone.utc).strftime("%Y%m%d%H%M")),
+        embedding=np.array("bge-m3"), trained_on=np.array(f"{len(split['train'])} silver articles"))
+    return res
+
+
 def run_transformer(key: str, split, epochs: int, batch: int, lr: float) -> tuple[dict, dict]:
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -127,6 +170,15 @@ def run_transformer(key: str, split, epochs: int, batch: int, lr: float) -> tupl
         return np.concatenate(outs)
 
     train = split["train"]
+    # Loss: cross-entropy on the primary frame (the main signal) + down-weighted BCE for secondary
+    # frames. Plain multi-label BCE with 1-3 positives out of 15 mostly teaches "predict no" and
+    # ignores rare frames; class weights counter the imbalance.
+    prim = np.bincount([d[3] for d in train], minlength=len(FRAMES)).astype(np.float32)
+    ce_w = torch.tensor(np.where(prim > 0, prim.sum() / np.maximum(prim, 1) / len(FRAMES), 0.0), device=dev).clamp(max=10)
+    pos = np.stack([d[2] for d in train]).sum(0)
+    pos_w = torch.tensor(np.clip((len(train) - pos) / np.maximum(pos, 1), 1, 20), device=dev, dtype=torch.float32)
+    ce = torch.nn.CrossEntropyLoss(weight=ce_w.float())
+    bce = torch.nn.BCEWithLogitsLoss(pos_weight=pos_w)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
     steps = epochs * ((len(train) + batch - 1) // batch)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=steps, pct_start=0.1)
@@ -138,35 +190,43 @@ def run_transformer(key: str, split, epochs: int, batch: int, lr: float) -> tupl
         order = rng.permutation(len(train))
         t0 = time.monotonic()
         for i in range(0, len(order), batch):
-            enc, y = encode([train[j] for j in order[i:i + batch]])
+            data = [train[j] for j in order[i:i + batch]]
+            enc, y = encode(data)
+            primary = torch.tensor([d[3] for d in data], device=dev)
             with torch.autocast(dev, dtype=torch.float16, enabled=dev == "cuda"):
-                loss = model(**{k: v.to(dev) for k, v in enc.items()}, labels=y.to(dev)).loss
+                logits = model(**{k: v.to(dev) for k, v in enc.items()}).logits.float()
+            loss = ce(logits, primary) + 0.5 * bce(logits, y.to(dev))
             opt.zero_grad()
             scaler.scale(loss).backward()
+            scaler.unscale_(opt)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  # MuRIL diverged without clipping
             scaler.step(opt)
             scaler.update()
             sched.step()
         val = score(predict(split["val"]), split["val"])
         print(f"  {key} epoch {ep + 1}: val primary_acc {val['primary_acc']:.3f} macro_f1 {val['macro_f1']:.3f} "
               f"({time.monotonic() - t0:.0f}s)", flush=True)
-        if val["macro_f1"] > best:
-            best, best_state = val["macro_f1"], {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        if val["macro_f1"] + val["primary_acc"] > best:  # select on both: rare frames and the primary
+            best = val["macro_f1"] + val["primary_acc"]
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
     model.load_state_dict(best_state)
     out_dir = MODELS_DIR / f"framing-{key}"
     model.save_pretrained(out_dir)
     tok.save_pretrained(out_dir)
     (out_dir / "frames.json").write_text(json.dumps(list(FRAMES)), encoding="utf-8")
+    # stable model version for the pipeline (file timestamps change on every CI download)
+    (out_dir / "version.txt").write_text(datetime.now(timezone.utc).strftime("%Y%m%d%H%M"), encoding="utf-8")
     return score(predict(split["val"]), split["val"]), score(predict(split["ref"]), split["ref"])
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--models", default="tfidf,xlmr,muril")
+    ap.add_argument("--models", default="tfidf,bge-lr,xlmr,muril")
     ap.add_argument("--train-labeller", default="local_long")
     ap.add_argument("--ref-labeller", default="primary")
-    ap.add_argument("--epochs", type=int, default=5)
+    ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch", type=int, default=16)
-    ap.add_argument("--lr", type=float, default=3e-5)
+    ap.add_argument("--lr", type=float, default=2e-5)
     args = ap.parse_args()
 
     split = load_dataset(args.train_labeller, args.ref_labeller)
@@ -174,7 +234,8 @@ def main() -> None:
     results = {}
     for key in args.models.split(","):
         print(f"== {key}")
-        results[key] = run_tfidf(split) if key == "tfidf" else run_transformer(key, split, args.epochs, args.batch, args.lr)
+        results[key] = (run_tfidf(split) if key == "tfidf" else run_embed_lr(split) if key == "bge-lr"
+                        else run_transformer(key, split, args.epochs, args.batch, args.lr))
         print(f"   val {results[key][0]}\n   ref {results[key][1]}")
 
     lines = [

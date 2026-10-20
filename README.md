@@ -66,6 +66,18 @@ pytest -q
    All three outputs are committed so every link can be traced. A neural NER model (GLiNER) was in the
    original plan; it was replaced because it would be as slow on CI CPUs as the embedding model.
 
+9. **Frames** (weeks 3–4): each article's angle in Media Frames Corpus categories, adapted for Indian
+   news ([labels/FRAMING_CODEBOOK.md](labels/FRAMING_CODEBOOK.md)). Silver labels from LLMs on 1,500
+   articles from multi-outlet stories; four classifiers compared in
+   [reports/framing_eval.md](reports/framing_eval.md). Production uses logistic regression on the
+   bge-m3 vectors clustering already stores, so framing costs almost nothing and covers headline-only
+   outlets too. Fine-tuned XLM-R scores about the same but needs a 1 GB model on CI.
+   ```bash
+   python -m nazariya.framing.silver --labeller local_long   # LLM silver labels (resumable)
+   python -m nazariya.framing.train                          # train + compare → models/framing_bge_lr.npz
+   python -m nazariya.framing.infer                          # frame recent articles
+   ```
+
 Preview locally: `python -m nazariya.export` then `python -m http.server -d site 8000`.
 Publishing is opt-in: enable GitHub Pages (source: GitHub Actions) and set the repository variable
 `PAGES_ENABLED=true`; the ingest workflow then deploys the site after every run.

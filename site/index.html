@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nazariya · Indian news coverage</title>
 <meta name="description" content="How Indian news outlets, in English and Hindi, cover the same events.">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="site">
@@ -47,12 +47,14 @@
     <p>Articles are grouped into events automatically: multilingual sentence embeddings (bge-m3) of each
     headline and opening paragraph, clustered online with a similarity threshold. Groupings can be wrong.
     Names under each headline are people, parties and institutions linked to Wikidata with a published
-    alias table; links can be wrong too.
+    alias table; links can be wrong too. "Framed as" shows the angle each outlet took (Media Frames
+    Corpus categories), predicted by a model trained on LLM labels: provisional, roughly 65% agreement
+    with a stronger reference model, not yet checked against human labels.
     Each strip shows only whether an outlet carried the story, not how it framed it.</p>
     <p>We store headlines, links and derived data only, never article text. Source code and evaluation
     reports: <a href="https://github.com/HalcyonVector/Nazariya">github.com/HalcyonVector/Nazariya</a>.</p>
   </div>
 </footer>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

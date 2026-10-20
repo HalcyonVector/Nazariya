@@ -85,6 +85,8 @@ header.site nav a[aria-current="page"] { color: var(--text); font-weight: 600; }
 .cell.nodata { border-color: var(--nodata);
   background: repeating-linear-gradient(45deg, var(--nodata) 0 2px, transparent 2px 5px); }
 
+.frames { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.frames b { color: var(--text); font-weight: 600; }
 details.articles { margin-top: 12px; }
 details.articles summary { cursor: pointer; font-size: 13px; color: var(--muted); }
 details.articles ul { list-style: none; padding: 0; margin: 10px 0 0; }

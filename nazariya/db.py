@@ -138,6 +138,27 @@ entity_scans = Table(
     Column("scanned_at", DateTime(timezone=True), nullable=False),
 )
 
+# ---------- framing & stance (model predictions) ----------
+
+article_frames = Table(
+    "article_frames", metadata,
+    Column("article_id", Integer, ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True),
+    Column("primary_frame", String(30), nullable=False),
+    Column("scores", JSON, nullable=False),  # {frame: probability}
+    Column("model", String(60), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+article_stances = Table(
+    "article_stances", metadata,
+    Column("article_id", Integer, ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True),
+    Column("qid", String(20), ForeignKey("entities.qid"), primary_key=True),
+    Column("stance", String(20), nullable=False),
+    Column("probs", JSON, nullable=False),  # {stance: probability}
+    Column("model", String(60), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
 runs = Table(
     "runs", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),

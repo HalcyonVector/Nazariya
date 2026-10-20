@@ -5,7 +5,8 @@ stories.json  events covered by ≥ MIN_OUTLETS outlets in the last STORY_WINDOW
               outlet count decayed by age. Each lists every member article (outlet, headline,
               link, language, time, wire agency) and, per outlet, whether we had data at all:
               an outlet with no successful fetch during the story's window is "no data", which
-              the page draws differently from "did not cover".
+              the page draws differently from "did not cover". Frames (model predictions,
+              provisional) per article, per outlet, and as a per-story breakdown.
 outlets.json  all outlets with role, language, runner and current ingestion health.
 
 Usage:
@@ -25,7 +26,9 @@ from .cluster import MODEL, TAU
 from .config import ROOT, load_outlets, runner_of
 from sqlalchemy import func
 
-from .db import article_events, articles, as_utc, entities, events, fetch_runs, get_engine, mentions
+from .db import (
+    article_events, article_frames, articles, as_utc, entities, events, fetch_runs, get_engine, mentions,
+)
 from .health import compute as compute_health
 
 STORY_WINDOW = timedelta(hours=48)
@@ -58,8 +61,9 @@ def export(now: datetime | None = None) -> dict:
         members = conn.execute(
             select(article_events.c.event_id, articles.c.outlet_id, articles.c.title, articles.c.url,
                    articles.c.lang, articles.c.published_at, articles.c.agency, articles.c.access,
-                   articles.c.syndicated_of, article_events.c.similarity)
+                   articles.c.syndicated_of, article_events.c.similarity, article_frames.c.primary_frame)
             .join(articles, articles.c.id == article_events.c.article_id)
+            .outerjoin(article_frames, article_frames.c.article_id == articles.c.id)
             .where(article_events.c.event_id.in_([e.id for e in evs]))
         ).all() if evs else []
         ent_rows = conn.execute(
@@ -94,6 +98,12 @@ def export(now: datetime | None = None) -> dict:
         if len(arts) >= MIN_ARTICLES_FOR_SHARE_RULE and per_outlet.most_common(1)[0][1] / len(arts) > MAX_OUTLET_SHARE:
             continue
         covered = set(per_outlet)
+        # each outlet counted once, by its most common primary frame on this story
+        outlet_frames: dict[str, Counter] = defaultdict(Counter)
+        for m in arts:
+            if m.primary_frame:
+                outlet_frames[m.outlet_id][m.primary_frame] += 1
+        frames = Counter(c.most_common(1)[0][0] for c in outlet_frames.values())
         window_end = min(now, last + NO_DATA_SLACK)
         no_data = sorted(
             oid for oid in registry
@@ -111,13 +121,15 @@ def export(now: datetime | None = None) -> dict:
             "langs": sorted({m.lang for m in arts if m.lang}),
             "no_data": no_data,
             # entities mentioned in ≥ 2 member articles and ≥ 10% of them, most-mentioned first
+            "frames": dict(frames.most_common()),
+            "outlet_frames": {o: c.most_common(1)[0][0] for o, c in outlet_frames.items()},
             "entities": [{"qid": r.qid, "label": r.label_en, "label_hi": r.label_hi, "type": r.type, "articles": r.arts}
                          for r in sorted(ents_by_event[e.id], key=lambda r: -r.arts)
                          if r.arts >= max(2, 0.1 * len(arts))][:MAX_ENTITIES],
             "articles": [{
                 "outlet": m.outlet_id, "title": m.title, "url": m.url, "lang": m.lang,
                 "published": iso(m.published_at), "agency": m.agency, "access": m.access,
-                "syndicated": m.syndicated_of is not None,
+                "syndicated": m.syndicated_of is not None, "frame": m.primary_frame,
             } for m in arts],
         })
     stories.sort(key=lambda s: -s["score"])
