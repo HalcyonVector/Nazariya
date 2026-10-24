@@ -98,7 +98,7 @@ kept past the 14-day cache so evaluations stay reproducible (still never publish
 
 ## Home runner
 Indian Express, News18, Firstpost, Jansatta and Organiser block datacenter IPs, so GitHub Actions
-skips them (`--runner cloud`) and a Windows scheduled task on a home PC ingests them every 2 hours:
+skips them (`--runner cloud`) and a Windows scheduled task on a home PC ingests them every 4 hours:
 ```powershell
 # one-time: put the Neon connection string in .env (gitignored):  DATABASE_URL=postgresql://...
 powershell -ExecutionPolicy Bypass -File scripts\install_home_task.ps1   # re-run after moving the folder

@@ -13,13 +13,19 @@ frames the same events. Free-tier only, transparent methods, real evaluation met
    from blindspot statistics.
 4. **No republishing.** Article text lives only in memory during a run. We store metadata,
    embeddings, derived labels, and link out.
+5. **Free tiers only, budgeted per month.** There is no budget for paid plans, so nothing here may
+   depend on one. Every recurring job states what it costs in each free quota (Neon: ~100 compute-hours,
+   0.5 GB storage and a data-transfer cap per month, so verify in its console since limits change;
+   Groq: daily token caps; GitHub Actions: free for public repos), and cadence and retention are chosen
+   from that arithmetic. Jobs cap their own work so a quota cannot be silently exhausted. A paid upgrade
+   is never the fallback.
 
 ## Architecture
 ```
-GitHub Actions (cron, every 2h)
+GitHub Actions (cron, every 4h)
   fetch → extract (trafilatura) → dedup/syndication → embed → cluster → NLP → aggregate → export JSON
      │                                     │
-  fetch_runs (health)        Postgres+pgvector (Neon/Supabase, hot 60d) + Parquet on HF Datasets (cold)
+  fetch_runs (health)        Postgres+pgvector (Neon/Supabase, hot ~7d: ~12k articles/day is ~20-25 MB/day, estimated) + Parquet on HF Datasets (cold)
 Kaggle/Colab GPU: fine-tune → ONNX int8 → HF Hub     HF Space: Argilla (labelling)     Groq: silver labels/claims
 Frontend: Next.js static export on Vercel / GitHub Pages
 ```

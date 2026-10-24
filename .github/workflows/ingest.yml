@@ -2,9 +2,9 @@ name: ingest
 
 on:
   schedule:
-    # hourly: GitHub delays or drops scheduled runs under load (gaps of 3-8 h were seen at "every 2 h");
-    # the home PC task also triggers this workflow after each of its runs
-    - cron: "17 * * * *"
+    # Every 4 hours. The free-tier database has a monthly compute-hour budget and every run wakes it
+    # for ~10-15 minutes, so cadence is a budget decision: 6 runs a day, not hourly.
+    - cron: "17 */4 * * *"
   workflow_dispatch:
 
 concurrency:

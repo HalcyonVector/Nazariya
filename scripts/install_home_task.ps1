@@ -1,5 +1,5 @@
 # Registers (or re-registers) the "Nazariya home ingest" scheduled task for the current user:
-# every 2 hours, catching up after sleep/shutdown, only when a network is available.
+# every 4 hours, catching up after sleep/shutdown, only when a network is available.
 # Re-run this after moving or renaming the repo folder, since the task stores the script path.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\install_home_task.ps1
@@ -13,9 +13,9 @@ $script = Join-Path $PSScriptRoot "home_ingest.ps1"
 # `-WindowStyle Hidden` alone still flashes a window on screen for a moment at every run.
 $action = New-ScheduledTaskAction -Execute "conhost.exe" `
     -Argument "--headless powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`""
-# start 10 minutes from now, then every 2 hours, indefinitely
+# start 10 minutes from now, then every 4 hours, indefinitely
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(10) `
-    -RepetitionInterval (New-TimeSpan -Hours 2)
+    -RepetitionInterval (New-TimeSpan -Hours 4)
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 45) -MultipleInstances IgnoreNew
