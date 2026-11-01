@@ -61,6 +61,9 @@ jobs:
         run: python -m nazariya.framing.infer
       - name: Export site data
         run: python -m nazariya.export
+      - name: Retention
+        # keeps the free-tier database under its storage cap: raw rows 8 days, labelled/training data pinned
+        run: python -m nazariya.retain
       - name: Health check
         # fails the job (→ GitHub emails you) when a cloud outlet has had no successful fetch for 6h
         run: python -m nazariya.health --fail-on-down

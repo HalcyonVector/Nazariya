@@ -19,6 +19,7 @@ python -m nazariya.health                # per-outlet health → reports/health.
 python -m nazariya.cluster               # embed new articles (bge-m3) and assign them to events
 python -m nazariya.entities.run          # link people/parties/states/institutions in new articles
 python -m nazariya.export                # JSON snapshots for the static site → site/data/
+python -m nazariya.retain --dry-run      # what retention would delete (it runs every cycle in CI)
 python -m nazariya.eval.embeddings       # embedding model comparison → reports/embedding_bakeoff.md
 python -m nazariya.eval.clustering       # τ sweep for clustering → reports/clustering_eval.md
 pytest -q

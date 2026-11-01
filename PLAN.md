@@ -71,6 +71,19 @@ Frontend: Next.js static export on Vercel / GitHub Pages
   failed: the LLMs read it as "same topic". Story-level grouping will instead link events through
   shared named entities and time, with its own definition ("same named case or incident").
 
+## Free-tier budget (database)
+Neon free plan, as understood on 2026-11-01 (limits change; the console's Usage page is the truth):
+~100 compute-hours, 0.5 GB storage and a data-transfer cap per month, all reset at the month rollover.
+- **Compute**: it ran out in ~3.5 days in October (hourly runs, an extra cloud run per home-task run, long
+  embedding phases keeping the database awake, heavy dev scripts). Now: runs every 4 h, embedding done in
+  memory and written once so the database can suspend, and every Postgres run prints
+  `[db] ... estimated compute-active N min` (sum these against the 100-hour cap).
+- **Storage**: 355 MB after four days with no deletion. `nazariya/retain.py` runs every cycle: raw rows
+  8 days, article text 3 days, vectors until assigned and framed, old events; labelled pairs and the
+  framing training sample are pinned. After the first purge and compaction the database was 59 MB.
+- **Transfer**: dev scripts that pulled whole article windows were the heavy readers; keep them on local
+  caches rather than re-reading the database.
+
 ## Risks
 Scraper breakage & IP blocks · feed outages → false blindspots · paywalls (never bypass) ·
 syndication inflation · language/region confound · stance-label conceptual errors ·
