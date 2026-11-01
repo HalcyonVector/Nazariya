@@ -64,7 +64,9 @@ def run(limit: int | None = None) -> dict:
         with engine.begin() as conn:
             upsert(conn, article_frames, [
                 {"article_id": r.article_id, "primary_frame": p,
-                 "scores": {f: round(float(x), 3) for f, x in zip(model.frames, s) if x >= 0.05},
+                 # top 3 only: the full score dict was ~440 bytes a row, the primary frame is what is used
+                 "scores": dict(sorted(((f, round(float(x), 3)) for f, x in zip(model.frames, s) if x >= 0.05),
+                                       key=lambda kv: -kv[1])[:3]),
                  "model": model.version, "created_at": now}
                 for r, p, s in zip(chunk, primary, scores)], ["article_id"])
     return {"framed": len(rows), "model": model.version, "seconds": round(time.monotonic() - t0, 1)}

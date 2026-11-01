@@ -37,7 +37,8 @@ from .embed import doc_text, embed
 MODEL = "bge-m3"
 TAU = 0.650  # best pairwise F1 when replaying this algorithm on labelled pairs (reports/clustering_eval.md)
 WINDOW = timedelta(hours=72)  # an event stays open this long after its latest article
-VECTOR_TTL = timedelta(days=5)
+VECTOR_TTL = timedelta(days=3)  # a vector is only needed until its article is assigned and framed
+MAX_EMBED_PER_RUN = 3000  # newest first; bounds the text read (transfer) and memory per run
 FINISHED = ("extracted", "headline_only", "skipped", "failed")
 EMBED_BATCH = 64
 EMBED_CHUNK = 256  # rows per write; also how often the time budget is checked
@@ -121,38 +122,64 @@ def from_blob(b: bytes, dtype=np.float16) -> np.ndarray:
     return np.frombuffer(b, dtype=dtype).astype(np.float32)
 
 
+# Event centroids are stored as one marker byte + float16 unit vector (2 KB instead of a 4 KB float32
+# sum); the sum is rebuilt as unit * n_articles. Legacy rows are plain float32 sums (length % 4 == 0).
+CENTROID_V2 = bytes([2])
+
+
+def centroid_to_blob(total: np.ndarray) -> bytes:
+    unit = total / max(float(np.linalg.norm(total)), 1e-9)
+    return CENTROID_V2 + to_blob(unit)
+
+
+def centroid_from_blob(blob: bytes, count: int) -> np.ndarray:
+    if len(blob) % 2 == 1 and blob[:1] == CENTROID_V2:
+        return from_blob(blob[1:]) * count
+    return from_blob(blob, np.float32)
+
+
 def embed_new(engine: Engine, now: datetime, model: str = MODEL, budget_s: float | None = None) -> int:
-    """Embed finished articles from the last WINDOW that have no vector yet, newest first, stopping
-    after `budget_s` seconds (the rest carry over to the next run). Safe to run from two machines
-    at once: a vector another run already wrote is skipped."""
+    """Embed finished, not-yet-assigned articles from the last WINDOW that have no vector, newest first
+    (at most MAX_EMBED_PER_RUN), stopping after `budget_s` seconds; the rest carry over.
+
+    Everything is embedded in memory and written in ONE transaction at the end, so the database sees
+    no queries during the long CPU phase and can suspend (free-tier compute hours are billed while it
+    is awake). Assigned articles are skipped: their vectors are deleted once they are framed. Safe to
+    run from two machines at once: a vector another run already wrote is skipped."""
     with engine.connect() as conn:
         rows = conn.execute(
             select(articles.c.id, articles.c.title, articles.c.summary, article_text.c.text)
             .outerjoin(article_text, article_text.c.article_id == articles.c.id)
             .outerjoin(article_vectors, article_vectors.c.article_id == articles.c.id)
-            .where(article_vectors.c.article_id.is_(None), articles.c.status.in_(FINISHED),
-                   articles.c.published_at >= now - WINDOW)
-            .order_by(articles.c.published_at.desc())
+            .outerjoin(article_events, article_events.c.article_id == articles.c.id)
+            .where(article_vectors.c.article_id.is_(None), article_events.c.article_id.is_(None),
+                   articles.c.status.in_(FINISHED), articles.c.published_at >= now - WINDOW)
+            .order_by(articles.c.published_at.desc()).limit(MAX_EMBED_PER_RUN)
         ).all()
     # nothing to embed (no headline, summary or body) would collapse into one blob of identical vectors
     rows = [r for r in rows if (r.title or "").strip() or r.text or r.summary]
     if not rows:
         return 0
-    t0, done = time.monotonic(), 0
+    t0 = time.monotonic()
+    done: list = []
+    out: list[np.ndarray] = []
     for start in range(0, len(rows), EMBED_CHUNK):
         if budget_s is not None and time.monotonic() - t0 > budget_s:
             break
         chunk = rows[start:start + EMBED_CHUNK]
         texts = [doc_text(r.title, r.text) if r.text else doc_text(r.title, r.summary) for r in chunk]
-        vecs = embed(model, texts, batch_size=EMBED_BATCH)
-        with engine.begin() as conn:
-            insert_ignore(conn, article_vectors, [
-                {"article_id": r.id, "model": model, "vec": to_blob(v),
-                 "text_kind": "lede" if r.text else "headline", "created_at": now}
-                for r, v in zip(chunk, vecs)
-            ], ["article_id"])
-        done += len(chunk)
-    return done
+        out.append(embed(model, texts, batch_size=EMBED_BATCH))
+        done += chunk
+    if not done:
+        return 0
+    vecs = np.concatenate(out)
+    with engine.begin() as conn:
+        insert_ignore(conn, article_vectors, [
+            {"article_id": r.id, "model": model, "vec": to_blob(v),
+             "text_kind": "lede" if r.text else "headline", "created_at": now}
+            for r, v in zip(done, vecs)
+        ], ["article_id"])
+    return len(done)
 
 
 # ---------- DB pipeline ----------
@@ -163,7 +190,7 @@ def load_active_events(conn, since: datetime, model: str) -> list[EventState]:
                events.c.rep_article_id, events.c.title)
         .where(events.c.last_seen >= since, events.c.centroid.is_not(None), events.c.model == model)
     ).all()
-    state = [EventState(r.id, from_blob(r.centroid, np.float32), r.n_articles,
+    state = [EventState(r.id, centroid_from_blob(r.centroid, r.n_articles), r.n_articles,
                         as_utc(r.first_seen).timestamp(), as_utc(r.last_seen).timestamp(),
                         rep_id=r.rep_article_id, rep_title=r.title) for r in rows]
     if state:
@@ -231,7 +258,7 @@ def assign_new(engine: Engine, now: datetime, tau: float = TAU, model: str = MOD
             "first_seen": datetime.fromtimestamp(ev.first_seen, timezone.utc),
             "last_seen": datetime.fromtimestamp(ev.last_seen, timezone.utc),
             "n_articles": ev.count, "n_outlets": len(ev.outlets), "title": ev.rep_title,
-            "rep_article_id": ev.rep_id, "centroid": to_blob(ev.sum, np.float32), "model": model,
+            "rep_article_id": ev.rep_id, "centroid": centroid_to_blob(ev.sum), "model": model,
             "updated_at": now,
         }
 
@@ -263,6 +290,7 @@ def assign_new(engine: Engine, now: datetime, tau: float = TAU, model: str = MOD
 
 
 def housekeeping(engine: Engine, now: datetime) -> dict:
+    """Close events that left the window (drop the centroid) and expire old vectors (VECTOR_TTL)."""
     with engine.begin() as conn:
         closed = conn.execute(
             update(events).where(and_(events.c.last_seen < now - WINDOW, events.c.centroid.is_not(None)))

@@ -44,7 +44,7 @@ from .textutil import (
 
 MAX_ITEM_AGE = timedelta(days=3)  # ignore older sitemap/feed entries
 STALE_SOURCE = timedelta(hours=36)  # newest item older than this → fall through to next source
-TEXT_TTL = timedelta(days=14)  # processing cache lifetime; long enough to re-run models weekly
+TEXT_TTL = timedelta(days=3)  # processing cache lifetime (free-tier storage); pinned label texts are exempt
 DEDUP_WINDOW = timedelta(hours=72)
 SAME_OUTLET_MAX_BITS = 3  # SimHash distance for "same article re-published under a new URL"
 SYNDICATED_MAX_BITS = 6  # cross-outlet wire copy; tune on labelled pairs

@@ -7,7 +7,10 @@ on every run and never exported or published.
 
 from __future__ import annotations
 
+import atexit
 import os
+import sys
+import time
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -15,6 +18,7 @@ from sqlalchemy import (
     MetaData, String, Table, Text, create_engine, select,
 )
 from sqlalchemy.dialects import postgresql, sqlite
+from sqlalchemy import event
 from sqlalchemy.engine import Connection, Engine
 
 from .config import ROOT, load_dotenv
@@ -203,9 +207,43 @@ def database_url() -> str:
     return url
 
 
+# Free-tier Postgres (Neon) bills compute while it is awake, and it suspends after SUSPEND_AFTER_S
+# without queries. Every statement's time is recorded so each run can print how long it kept the
+# database awake; summing these over a month against the plan's compute-hour limit is the budget.
+SUSPEND_AFTER_S = 300
+_activity: list[float] = []
+_reporting = False
+
+
+def estimated_active_seconds(stamps: list[float] | None = None) -> float:
+    """Seconds the database was kept awake: gaps shorter than the suspend delay count in full, and
+    the last statement keeps it awake for one more delay."""
+    ts = sorted(_activity if stamps is None else stamps)
+    if not ts:
+        return 0.0
+    return sum(min(b - a, SUSPEND_AFTER_S) for a, b in zip(ts, ts[1:])) + SUSPEND_AFTER_S
+
+
+def _report_activity() -> None:
+    if _activity:
+        span = _activity[-1] - _activity[0]
+        print(f"[db] {len(_activity)} statements over {span / 60:.1f} min; estimated compute-active "
+              f"{estimated_active_seconds() / 60:.1f} min (incl. {SUSPEND_AFTER_S // 60}-min idle tail)",
+              file=sys.stderr)
+
+
 def get_engine(url: str | None = None) -> Engine:
+    global _reporting
     # pre-ping: Neon suspends idle compute and drops connections during long CPU-bound steps
     engine = create_engine(url or database_url(), future=True, pool_pre_ping=True)
+    if engine.dialect.name == "postgresql":
+        event.listen(engine, "before_cursor_execute", lambda *a, **k: _activity.append(time.time()))
+        if not _reporting:
+            atexit.register(_report_activity)
+            _reporting = True
+    elif engine.dialect.name == "sqlite":
+        # SQLite ignores ON DELETE CASCADE unless asked; production (Postgres) always cascades
+        event.listen(engine, "connect", lambda conn, _: conn.execute("PRAGMA foreign_keys=ON"))
     metadata.create_all(engine)
     return engine
 
