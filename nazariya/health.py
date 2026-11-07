@@ -2,7 +2,8 @@
 
 Usage:
     python -m nazariya.health                 # print + write reports/health.md
-    python -m nazariya.health --fail-on-down  # exit 1 if any cloud outlet is DOWN (for CI alerts)
+    python -m nazariya.health --fail-on-down  # exit 1 if any cloud outlet is DOWN
+    python -m nazariya.health --max-down-share 0.25   # exit 1 only if >25% of cloud outlets are DOWN (CI)
 
 Flags:
     DOWN      no accepted fetch in the last 6h
@@ -135,7 +136,9 @@ def render(rows: list[dict], now: datetime) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fail-on-down", action="store_true")
+    ap.add_argument("--fail-on-down", action="store_true", help="exit 1 if ANY cloud outlet is DOWN")
+    ap.add_argument("--max-down-share", type=float,
+                    help="exit 1 only if more than this share of cloud outlets is DOWN (a systemic problem)")
     args = ap.parse_args()
     now = datetime.now(timezone.utc)
     rows = compute(now)
@@ -147,6 +150,13 @@ def main() -> None:
     if args.fail_on_down and down:
         print(f"DOWN: {', '.join(down)}", file=sys.stderr)
         sys.exit(1)
+    cloud = [r for r in rows if r["runner"] == "cloud"]
+    if args.max_down_share is not None and cloud and len(down) / len(cloud) > args.max_down_share:
+        print(f"{len(down)} of {len(cloud)} cloud outlets are DOWN (limit {args.max_down_share:.0%}): {', '.join(down)}",
+              file=sys.stderr)
+        sys.exit(1)
+    if down:
+        print(f"note: DOWN but within the limit: {', '.join(down)}", file=sys.stderr)
 
 
 if __name__ == "__main__":
