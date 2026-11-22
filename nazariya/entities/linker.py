@@ -28,11 +28,13 @@ ENTITIES = CONFIG / "entities" / "entities.jsonl"
 RULES = CONFIG / "entities" / "linking.yaml"
 # single-word person names dropped because they are mostly ordinary words (nazariya.entities.calibrate)
 CALIBRATION = CONFIG / "entities" / "alias_calibration.yaml"
+REGIONAL = CONFIG / "entities" / "regional_states.yaml"
 SPLIT = re.compile(r"[\s.,;:!?\"()\[\]{}<>|/\\\-–—“”‘’'`…।॥·•]+")
 MAX_ALIAS_TOKENS = 8
+REGIONAL_MIN_STEM = 4
 # Bump when matching logic changes, so stored mentions are rescanned (the version also hashes the
 # alias table, rules and calibration files).
-LOGIC_VERSION = b"2"
+LOGIC_VERSION = b"3"  # 3: regional-language state names, zero-width joiners ignored
 PAREN = re.compile(r"\s*\([^)]*\)")
 
 
@@ -42,7 +44,7 @@ HALF_NASAL = re.compile("[ङञणनम]्(?=[क-ह])")
 
 
 def normalise(token: str) -> str:
-    token = token.replace("ँ", "ं").replace("़", "")
+    token = token.replace("ँ", "ं").replace("़", "").replace("‌", "").replace("‍", "")
     return HALF_NASAL.sub("ं", token).lower()
 
 
@@ -70,7 +72,8 @@ class Linker:
         self.ratio = float(rules.get("prominence_ratio", 3.0))
         raw = entities_path.read_bytes()
         calib = calibration_path.read_bytes() if calibration_path and calibration_path.exists() else b""
-        self.version = hashlib.sha1(LOGIC_VERSION + raw + rules_path.read_bytes() + calib).hexdigest()[:10]
+        regional = REGIONAL.read_bytes() if REGIONAL.exists() else b""
+        self.version = hashlib.sha1(LOGIC_VERSION + raw + rules_path.read_bytes() + calib + regional).hexdigest()[:10]
         cal = (yaml.safe_load(calib) or {}) if calib else {}
         dropped = {(d["alias"], d["qid"]) for d in cal.get("dropped", [])}
         # With a calibration, a single-word person name needs positive evidence (seen often enough
@@ -117,6 +120,35 @@ class Linker:
                         sur = normalise(toks[-1])
                         if len(sur) >= 4 and sur not in common and sur not in blocked and single_ok(sur, qid):
                             self.index[(sur,)].add(Entry(qid, True))
+        self._add_regional(regional)
+
+    def _add_regional(self, regional: bytes) -> None:
+        """State names in the regional languages. Tamil, Malayalam, Telugu, Kannada and Bengali add case
+        endings to names (தமிழ்நாடு "Tamil Nadu" → தமிழ்நாட்டில் "in Tamil Nadu"), so a one-word name
+        also matches any word that starts with its stem (the name minus its last letter), if that stem
+        is at least REGIONAL_MIN_STEM letters long."""
+        self.stems: dict[str, set[str]] = defaultdict(set)
+        if not regional:
+            return
+        states = (yaml.safe_load(regional) or {}).get("states", {})
+        for qid, langs in states.items():
+            if qid not in self.entities:
+                continue
+            for names in langs.values():
+                for name in names:
+                    key = tuple(normalise(t) for t in tokenize(name))
+                    if not key or len("".join(key)) <= 3:
+                        continue
+                    self.index[key].add(Entry(qid, False))
+                    if len(key) == 1 and not key[0].isascii() and len(key[0]) - 1 >= REGIONAL_MIN_STEM:
+                        self.stems[key[0][:-1]].add(qid)
+        self.stem_lengths = sorted({len(k) for k in self.stems}, reverse=True)
+
+    def _stem_hit(self, token: str) -> set[str] | None:
+        for n in self.stem_lengths:
+            if len(token) > n and token[:n] in self.stems:
+                return self.stems[token[:n]]
+        return None
 
     def _prominent(self, qids: set[str]) -> str | None:
         ranked = sorted(qids, key=lambda q: -self.entities[q]["sitelinks"])
@@ -144,6 +176,9 @@ class Linker:
                         i += n
                         break
                 else:
+                    stem = self._stem_hit(folded[i]) if self.stems else None
+                    if stem:
+                        hits.append(({Entry(q, False) for q in stem}, in_title, False))
                     i += 1
 
         def candidates(h) -> set[str]:

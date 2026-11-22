@@ -360,3 +360,109 @@ feeds:
       url: https://zeenews.india.com/hindi/india.xml
     - kind: gnews
       url: https://news.google.com/rss/search?q=site%3Azeenews.india.com+when%3A1d&hl=hi&gl=IN&ceid=IN:hi
+  # ---- regional languages (added 2026-11-23) ----
+  dinamalar:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.dinamalar.com/sitemap_latest.xml
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Adinamalar.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:ta
+  hindutamil:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.hindutamil.in/news_sitemap.xml
+    - kind: rss
+      url: https://www.hindutamil.in/feed
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Ahindutamil.in+when%3A1d&hl=en-IN&gl=IN&ceid=IN:ta
+  sangbadpratidin:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.sangbadpratidin.in/news-sitemap.xml
+    - kind: rss
+      url: https://www.sangbadpratidin.in/feed/
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Asangbadpratidin.in+when%3A1d&hl=en-IN&gl=IN&ceid=IN:bn
+  eisamay:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://eisamay.com/news_sitemap.xml
+    - kind: rss
+      url: https://eisamay.com/feed
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Aeisamay.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:bn
+  loksatta:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.loksatta.com/news-sitemap.xml
+    - kind: sitemap
+      url: https://www.loksatta.com/sitemap-news.xml
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Aloksatta.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:mr
+  maharashtratimes:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://maharashtratimes.com/staticsitemap/mt/news/sitemap-48hours.xml
+    - kind: rss
+      url: https://maharashtratimes.com/langapi/sitemap/gstandrssfeed.xml
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Amaharashtratimes.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:mr
+  mathrubhumi:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.mathrubhumi.com/sitemaps/mathrubhumi/sitemap_news1.xml
+    - kind: rss
+      url: https://www.mathrubhumi.com/sitemaps/mathrubhumi/rss
+    - kind: rss
+      url: https://www.mathrubhumi.com/rss
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Amathrubhumi.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:ml
+  manoramaonline:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.manoramaonline.com/news.news-sitemaplist.xml
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Amanoramaonline.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:ml
+  eenadu:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.eenadu.net/sitemap-news.xml
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Aeenadu.net+when%3A1d&hl=en-IN&gl=IN&ceid=IN:te
+  sakshi:
+    access: full
+    sources:
+    # the RSS feed holds ~2.6 hours; the main sitemap holds a week of dated items
+    - kind: sitemap
+      url: https://www.sakshi.com/sitemap.xml
+    - kind: rss
+      url: https://www.sakshi.com/rss.xml
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Asakshi.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:te
+  prajavani:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://www.prajavani.net/news_sitemap.xml
+    - kind: rss
+      url: https://www.prajavani.net/feed
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Aprajavani.net+when%3A1d&hl=en-IN&gl=IN&ceid=IN:kn
+  vijaykarnataka:
+    access: full
+    sources:
+    - kind: sitemap
+      url: https://vijaykarnataka.com/staticsitemap/vk/news/sitemap-48hours.xml
+    - kind: rss
+      url: https://vijaykarnataka.com/langapi/sitemap/gstandrssfeed.xml
+    - kind: gnews
+      url: https://news.google.com/rss/search?q=site%3Avijaykarnataka.com+when%3A1d&hl=en-IN&gl=IN&ceid=IN:kn

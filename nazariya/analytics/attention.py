@@ -80,7 +80,7 @@ def half_life(f: Facts) -> dict:
         size = "2-4 outlets" if e["n_news_outlets"] < 5 else "5-9 outlets" if e["n_news_outlets"] < 10 else "10+ outlets"
         keys = {
             "Where": "Northeast" if st & ne else "Other states" if st else "No state named",
-            "Broke in": {"en": "English", "hi": "Hindi"}.get(e.get("first_lang") or "", "Other"),
+            "Broke in": {"en": "English", "hi": "Hindi"}.get(e.get("first_lang") or "", "A regional language"),
             "Size": size,
             "Frame": (e.get("frame") or "unknown").replace("_", " "),
         }

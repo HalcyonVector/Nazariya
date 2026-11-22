@@ -42,6 +42,8 @@ class Facts:
 def group_of(lang: str, region: str) -> str:
     if lang == "hi":
         return "Hindi"
+    if lang != "en":
+        return "Regional language"
     return "English national" if region == "national" else "English regional"
 
 

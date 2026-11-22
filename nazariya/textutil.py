@@ -20,6 +20,8 @@ SCRIPTS = {
     "ml": (0x0D00, 0x0D7F),
 }
 
+DEVANAGARI_LANGS = {"mr", "ne"}
+
 TRACKING_PARAMS = {"fbclid", "gclid", "ref", "ref_src", "cmp", "from", "src", "sref", "ito", "pfrom", "amp", "utm"}
 
 
@@ -103,6 +105,8 @@ def detect_lang(text: str, default: str = "en") -> str:
     if not counts and not latin:
         return default
     lang, n = counts.most_common(1)[0] if counts else (default, 0)
+    if lang == "hi" and default in DEVANAGARI_LANGS:
+        lang = default  # Marathi and Nepali share Hindi's script; the outlet's language decides
     return lang if n >= latin * 0.5 else "en"
 
 

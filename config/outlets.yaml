@@ -335,6 +335,84 @@ outlets:
     role: outlet
     hints: []
 
+  # ---------------- Regional languages ----------------
+  - id: dinamalar
+    name: Dinamalar
+    homepage: https://www.dinamalar.com/
+    lang: ta
+    region: south
+    role: outlet
+    hints:
+      - https://www.dinamalar.com/sitemap_latest.xml
+  - id: hindutamil
+    name: Hindu Tamil Thisai
+    homepage: https://www.hindutamil.in/
+    lang: ta
+    region: south
+    role: outlet
+  - id: sangbadpratidin
+    name: Sangbad Pratidin
+    homepage: https://www.sangbadpratidin.in/
+    lang: bn
+    region: east
+    role: outlet
+  - id: eisamay
+    name: Ei Samay
+    homepage: https://eisamay.com/
+    lang: bn
+    region: east
+    role: outlet
+  - id: loksatta
+    name: Loksatta
+    homepage: https://www.loksatta.com/
+    lang: mr
+    region: west
+    role: outlet
+  - id: maharashtratimes
+    name: Maharashtra Times
+    homepage: https://maharashtratimes.com/
+    lang: mr
+    region: west
+    role: outlet
+  - id: mathrubhumi
+    name: Mathrubhumi
+    homepage: https://www.mathrubhumi.com/
+    lang: ml
+    region: south
+    role: outlet
+  - id: manoramaonline
+    name: Manorama Online
+    homepage: https://www.manoramaonline.com/
+    lang: ml
+    region: south
+    role: outlet
+    hints:
+      - https://www.manoramaonline.com/news.news-sitemaplist.xml
+  - id: eenadu
+    name: Eenadu
+    homepage: https://www.eenadu.net/
+    lang: te
+    region: south
+    role: outlet
+  - id: sakshi
+    name: Sakshi
+    homepage: https://www.sakshi.com/
+    lang: te
+    region: south
+    role: outlet
+  - id: prajavani
+    name: Prajavani
+    homepage: https://www.prajavani.net/
+    lang: kn
+    region: south
+    role: outlet
+  - id: vijaykarnataka
+    name: Vijay Karnataka
+    homepage: https://vijaykarnataka.com/
+    lang: kn
+    region: south
+    role: outlet
+
   # ---------------- Reference sources ----------------
   - id: pib
     name: Press Information Bureau

@@ -83,3 +83,14 @@ def test_half_nasal_equals_anusvara():
     from nazariya.entities.linker import normalise
     assert normalise("नरेन्द्र") == normalise("नरेंद्र")
     assert normalise("गाँधी") == normalise("गांधी")
+
+
+
+def test_regional_state_names_and_case_endings():
+    from nazariya.entities.linker import Linker
+    lk = Linker()
+    assert "Q1445" in lk.link("தமிழ்நாடு அரசு அறிவிப்பு")                 # Tamil Nadu, exact
+    assert "Q1445" in lk.link("தமிழ்நாட்டில் கனமழை")                     # "in Tamil Nadu": case ending
+    assert "Q1186" in lk.link("കേരളത്തിൽ മഴ")                              # Kerala in Malayalam, inflected
+    assert "Q1191" in lk.link("महाराष्ट्रात पाऊस")                         # Maharashtra in Marathi, inflected
+    assert not lk.link("ಇಂದು ಮಳೆ")                                         # nothing to find

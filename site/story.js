@@ -21,7 +21,7 @@ function render(S) {
     return h < 0.05 ? "first" : h < 1 ? `+${Math.round(h * 60)} min` : h < 48 ? `+${h.toFixed(h < 10 ? 1 : 0)} h` : `+${(h / 24).toFixed(1)} days`;
   };
   const span = (new Date(S.last_seen) - t0) / 3.6e6;
-  const langs = Object.entries(S.langs).map(([l, n]) => `${n} ${l === "hi" ? "Hindi" : l === "en" ? "English" : l}`).join(", ");
+  const langs = Object.entries(S.langs).map(([l, n]) => `${n} ${langName(l)}`).join(", ");
   const facts = [
     ["Outlets", S.n_outlets], ["Articles", S.n_articles], ["Story ran for", span < 1 ? `${Math.round(span * 60)} min` : span < 48 ? `${span.toFixed(1)} h` : `${(span / 24).toFixed(1)} days`],
     ["Expected", S.expected != null ? `~${Math.round(S.expected)} more` : "n/a"],

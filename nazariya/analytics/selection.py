@@ -14,7 +14,7 @@ from sklearn.model_selection import GroupKFold
 
 from .data import Facts, load_states
 
-GROUPS = ["English national", "English regional", "Hindi"]
+GROUPS = ["English national", "English regional", "Hindi", "Regional language"]
 SINGLETON_SAMPLE = 0.15
 BOOTSTRAP = 25
 MIN_FRAME_EVENTS = 150
@@ -32,6 +32,7 @@ BASE_FEATURES = [
     ("northeast", "About a Northeast state"),
     ("other_state", "About another named state"),
     ("broke_hindi", "Broke in Hindi"),
+    ("broke_regional", "Broke in a regional language"),
 ]
 
 
@@ -48,7 +49,7 @@ def _features(f: Facts, frames: list[str]) -> tuple[list[str], list[str], dict[i
         toll = fr.get("toll") or 0
         v = [toll >= 10, 1 <= toll < 10, (fr.get("politicians") or 0) > 0, bool(fr.get("wire")),
              bool(fr.get("govt")), bool(fr.get("dateline")), delhi in st, bool(st & ne),
-             bool(st - ne - {delhi}), fr.get("lang") == "hi"]
+             bool(st - ne - {delhi}), fr.get("lang") == "hi", fr.get("lang") not in (None, "en", "hi")]
         v += [fr.get("frame") == x for x in frames]
         v += [not fr.get("text")]
         X[eid] = np.array(v, dtype=float)

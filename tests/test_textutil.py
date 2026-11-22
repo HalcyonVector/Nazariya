@@ -103,3 +103,10 @@ def test_agency_from_author():
     assert agency_from_author("आईएएनएस") == "IANS"
     assert agency_from_author("Anirudh Sharma") is None  # "ani" inside a name is not ANI
     assert agency_from_author(None) is None
+
+
+def test_marathi_keeps_its_language():
+    from nazariya.textutil import detect_lang
+    assert detect_lang("महाराष्ट्रात मुसळधार पाऊस", default="mr") == "mr"
+    assert detect_lang("महाराष्ट्र में भारी बारिश", default="hi") == "hi"
+    assert detect_lang("தமிழ்நாட்டில் கனமழை", default="ta") == "ta"

@@ -3,7 +3,7 @@
 
 const INK = "#1d1d1b", PAPER = "#f3eddf", HAIR = "#cfc6b2", MUTE = "#78736a";
 const PINK = "#ff48b0", BLUE = "#0078bf", GREEN = "#00a95c", YELLOW = "#ffe800", ORANGE = "#ff6c2f";
-const GC = { "English national": BLUE, "English regional": PINK, "Hindi": GREEN };
+const GC = { "English national": BLUE, "English regional": PINK, "Hindi": GREEN, "Regional language": ORANGE };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pct = (x, d = 0) => (100 * x).toFixed(d) + "%";
@@ -18,6 +18,8 @@ const pendingHTML = (msg) => `<div class="pending"><b>Collecting data</b>${esc(m
 const pending = (el, m, what) => { if (el) el.innerHTML = pendingHTML(m?.reason || what); };
 const hed = (id, html) => { const el = $(id); if (el && html) el.innerHTML = html; };
 const legendGroups = () => Object.entries(GC).map(([g, c]) => `<span><i class="dot" style="background:${c}"></i>${g}</span>`).join("");
+const LANG_NAMES = { en: "English", hi: "Hindi", ta: "Tamil", bn: "Bengali", mr: "Marathi", ml: "Malayalam", te: "Telugu", kn: "Kannada" };
+const langName = (l) => LANG_NAMES[l] || l;
 const storyHref = (id) => `story.html?id=${encodeURIComponent(id)}`;
 const outletHref = (id) => `outlet.html?id=${encodeURIComponent(id)}`;
 // only http(s) links from feeds are ever rendered as links

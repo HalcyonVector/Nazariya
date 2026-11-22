@@ -97,7 +97,7 @@ owners:
     source: https://en.wikipedia.org/wiki/Swarajya_(magazine)
   deccanherald:
     owner: "The Printers, Mysore"
-    group: null
+    group: "The Printers (Mysore)"
     source: https://en.wikipedia.org/wiki/Deccan_Herald
   tribune:
     owner: "The Tribune Trust"
@@ -117,7 +117,7 @@ owners:
     source: https://en.wikipedia.org/wiki/The_New_Indian_Express
   onmanorama:
     owner: "Malayala Manorama Company Ltd"
-    group: null
+    group: "Malayala Manorama"
     source: https://en.wikipedia.org/wiki/Malayala_Manorama
   deccanchronicle:
     owner: "Deccan Chronicle Holdings Limited"
@@ -155,3 +155,51 @@ owners:
     owner: "BBC"
     group: null
     source: https://en.wikipedia.org/wiki/BBC_News
+  dinamalar:
+    owner: null
+    group: null
+    source: https://en.wikipedia.org/wiki/Dinamalar
+  hindutamil:
+    owner: "The Hindu Group"
+    group: "The Hindu Group"
+    source: https://en.wikipedia.org/wiki/Hindu_Tamil_Thisai
+  sangbadpratidin:
+    owner: "Swapan Sadhan Bose"
+    group: null
+    source: https://en.wikipedia.org/wiki/Sangbad_Pratidin
+  eisamay:
+    owner: "Tidings Media and Communications Pvt Ltd"
+    group: null
+    source: https://en.wikipedia.org/wiki/Ei_Samay
+  loksatta:
+    owner: "Indian Express Group"
+    group: "Indian Express Limited"
+    source: https://en.wikipedia.org/wiki/Loksatta
+  maharashtratimes:
+    owner: "The Times Group"
+    group: "The Times Group (Bennett, Coleman & Co.)"
+    source: https://en.wikipedia.org/wiki/Maharashtra_Times
+  mathrubhumi:
+    owner: "Mathrubhumi Printing And Publishing Company Ltd"
+    group: null
+    source: https://en.wikipedia.org/wiki/Mathrubhumi
+  manoramaonline:
+    owner: "Malayala Manorama Company Ltd"
+    group: "Malayala Manorama"
+    source: https://en.wikipedia.org/wiki/Malayala_Manorama
+  eenadu:
+    owner: "Ramoji Group"
+    group: null
+    source: https://en.wikipedia.org/wiki/Eenadu
+  sakshi:
+    owner: "Y. S. Bharathi Reddy (publisher: Jagati Publications Ltd.)"
+    group: null
+    source: https://en.wikipedia.org/wiki/Sakshi_(newspaper)
+  prajavani:
+    owner: "The Printers (Mysore) Private Limited"
+    group: "The Printers (Mysore)"
+    source: https://en.wikipedia.org/wiki/Prajavani
+  vijaykarnataka:
+    owner: "The Times Group"
+    group: "The Times Group (Bennett, Coleman & Co.)"
+    source: https://en.wikipedia.org/wiki/Vijaya_Karnataka
