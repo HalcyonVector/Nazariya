@@ -61,6 +61,9 @@ jobs:
           python -m nazariya.inbox import data/home_inbox.jsonl.gz
       - name: Ingest
         run: python -m nazariya.ingest --runner cloud
+      - name: Re-check older articles
+        # logs stories that are taken down (two clear "gone" checks hours apart); capped per run
+        run: python -m nazariya.recheck
       - name: Cluster
         # bge-m3 on a CPU runner does about 1 article/s; the cap keeps a run bounded and any
         # backlog carries over to the next run

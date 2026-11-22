@@ -326,6 +326,31 @@ def ownership(f: Facts) -> dict:
                            "source": (owners.get(o) or {}).get("source")} for o in f.outlets}}
 
 
+def removed_stories(f: Facts) -> dict:
+    """Articles re-checked a day or more after publishing and found clearly gone twice."""
+    checked, gone = Counter(), Counter()
+    for r in f.rechecks:
+        if r["outlet_id"] in f.outlets:
+            checked[r["outlet_id"]] += 1
+            gone[r["outlet_id"]] += bool(r["confirmed_at"])
+    total = sum(checked.values())
+    if total < 200:
+        return {"ready": False, "reason": f"{total} articles re-checked so far; this needs 200"}
+    rows = []
+    for o, n in checked.items():
+        if n >= 20:
+            lo, hi = wilson(gone[o], n)
+            rows.append({"id": o, "name": f.outlets[o].name, "checked": n, "removed": gone[o],
+                         "rate": round(gone[o] / n, 4), "lo": round(lo, 4), "hi": round(hi, 4)})
+    rows.sort(key=lambda r: -r["rate"])
+    recent = sorted((r for r in f.rechecks if r["confirmed_at"] and r["outlet_id"] in f.outlets),
+                    key=lambda r: r["confirmed_at"], reverse=True)[:20]
+    return {"ready": True, "checked": total, "removed": sum(gone.values()), "by_outlet": rows,
+            "recent": [{"outlet": f.outlets[r["outlet_id"]].name, "outlet_id": r["outlet_id"], "title": r["title"],
+                        "url": r["url"], "status": r["status"], "published_at": r["published_at"].isoformat() if r["published_at"] else None,
+                        "gone_by": r["first_gone_at"].isoformat()} for r in recent]}
+
+
 def headline_edits(f: Facts, limit: int = 60) -> dict:
     vol = Counter()
     for ev in f.cov.values():

@@ -12,7 +12,7 @@ const SOURCE = ISSUE && /^\d{4}-W\d{2}$/.test(ISSUE) ? `data/editions/${ISSUE}.j
 getJSON(SOURCE).then((data) => {
   A = data;
   Object.entries(A.outlets).forEach(([id, o]) => (NAME[id] = o.name));
-  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, releases, clock, ownership, allStories, issues]) {
+  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, releases, clock, ownership, breakout, removed, allStories, issues]) {
     try { f(); } catch (e) { console.error(f.name, e); }
   }
 }).catch((e) => {
@@ -400,4 +400,33 @@ function ownership() {
       <b>${pct(p.similarity)}</b></div>`).join("") +
     `<div class="legend"><span><i class="dot" style="background:${PAPER}"></i>comparable different-owner outlets</span><span><i class="dot" style="background:${GREEN}"></i>the sister pair</span></div>`;
   $("ownmethod").textContent = `${O.outlets} outlets. Overlap: Jaccard index of stories covered by 3+ outlets. Test: owners shuffled within each language, ${O.permutations.toLocaleString()} times; p = ${O.p_value}.`;
+}
+
+// ---------------------------------------------------------------- breakout watch
+function breakout() {
+  const F = A.forecast, el = $("watch");
+  if (!F || !F.ready) { pending(el, F); $("scorecard").remove(); return; }
+  const S = F.score;
+  if (F.watch.length) hed("hed-break", `<em>${pct(F.watch[0].p)}</em> chance: the story most likely to reach ${F.big} newsrooms`);
+  el.innerHTML = F.watch.length ? F.watch.map((w) => `
+    <div class="item"><div>${w.page ? `<a class="t" href="${storyHref(w.event_id)}">${esc(w.title)}</a>` : `<span class="t">${esc(w.title)}</span>`}
+      <div class="m">${w.n_outlets} outlet${w.n_outlets === 1 ? "" : "s"} so far &middot; first seen ${ago(w.first_seen)}</div></div>
+      <div class="score"><b>${pct(w.p)}</b> chance of ${F.big}+</div></div>`).join("")
+    : pendingHTML("No story is between 2 and 12 hours old right now.");
+  $("scorecard").innerHTML = `<h3>The model's record</h3>
+    <div class="kv"><div><small>Held-out stories</small><b>${S.test_stories.toLocaleString()}</b></div><div><small>Broke out</small><b>${S.test_breakouts}</b></div>
+      <div><small>AUC</small><b>${S.auc ?? "n/a"}</b></div><div><small>Hit rate, top ${S.top_k}</small><b>${pct(S.hit_rate_top)}</b></div></div>
+    <h5>Predicted vs what happened</h5>${S.calibration.map((c) => `<div class="nb"><span>said ${pct(c.predicted)}</span><span>${pct(c.observed)} did (${c.n})</span></div>`).join("")}
+    <p class="small muted">Fitted on the older 70% of ${F.trained_on.toLocaleString()} finished stories, scored on the newer 30%. Base rate ${pct(S.base_rate, 1)}.</p>`;
+}
+
+// ---------------------------------------------------------------- stories that disappeared
+function removed() {
+  const R = A.removals, el = $("removed");
+  if (!R || !R.ready) return pending(el, R);
+  el.innerHTML = `<p class="small muted">${R.removed} of ${R.checked.toLocaleString()} re-checked articles were taken down.</p>` +
+    (R.recent.length ? R.recent.slice(0, 10).map((r) => `<div class="edit"><div class="o"><a class="tag" href="${outletHref(r.outlet_id)}" style="background:${gcol(r.outlet_id)};color:#fff">${esc(r.outlet)}</a>
+      ${r.published_at ? `published ${ago(r.published_at)}` : ""} &middot; HTTP ${r.status}</div><div class="h"><del>${esc(r.title)}</del></div></div>`).join("") : "") +
+    (R.by_outlet.some((o) => o.removed) ? `<h5>Removed per 1,000 re-checked</h5>` + R.by_outlet.filter((o) => o.removed).slice(0, 12).map((o) =>
+      `<div class="nb" title="${o.removed} of ${o.checked}; 95% interval ${(1000 * o.lo).toFixed(1)} to ${(1000 * o.hi).toFixed(1)}"><a href="${outletHref(o.id)}">${esc(o.name)}</a><span>${(1000 * o.rate).toFixed(1)}</span></div>`).join("") : "");
 }

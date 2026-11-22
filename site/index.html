@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nazariya: the newspaper about newspapers</title>
-<meta name="description" content="Models of how 38 Indian news outlets cover the same events: who gets there first, who copies, what gets passed over, and how long stories last.">
+<meta name="description" content="Models of how 50 Indian newsrooms in eight languages cover the same events: who gets there first, who copies, what gets passed over, and how long stories last.">
 <meta property="og:title" content="Nazariya: the newspaper about newspapers">
-<meta property="og:description" content="Models of how 38 Indian news outlets cover the same events, updated every four hours.">
+<meta property="og:description" content="Models of how 50 Indian newsrooms in eight languages cover the same events, updated every four hours.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,700&family=Work+Sans:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <div class="paper">
@@ -18,7 +18,7 @@
 <header class="mast">
   <div class="edition">
     <span id="ed-date">Today</span>
-    <span class="ed-mid">Updated every four hours from 38 English and Hindi newsrooms</span>
+    <span class="ed-mid">Updated every four hours from 50 newsrooms in eight languages</span>
     <a href="health.html" target="_blank" rel="noopener">Sources and feed status</a>
   </div>
   <h1 class="nameplate"><span>Nazariya</span></h1>
@@ -26,7 +26,7 @@
   <nav class="sections">
     <a href="#lead">Passed over</a><a href="#map">The map</a><a href="#first">First past the post</a><a href="#select">News value</a>
     <a href="#atlas">The atlas</a><a href="#wire">Wire desk</a><a href="#life">Shelf life</a><a href="#copy">Copy desk</a>
-    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#owners">Owners</a><a href="#releases">Official business</a><a href="#clock">Clock</a><a href="#all">All stories</a>
+    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#breakout">Breakout</a><a href="#owners">Owners</a><a href="#releases">Official business</a><a href="#clock">Clock</a><a href="#all">All stories</a>
   </nav>
   <div class="statline" id="statline"></div>
   <div class="ticker" aria-label="Findings"><div class="ticker-label">Latest</div><div class="ticker-track"><div class="ticker-run" id="ticker"></div></div></div>
@@ -122,6 +122,9 @@
     <h2 class="hed" id="hed-edits">Headlines changed after publishing</h2>
     <p class="dek">Feeds are read every four hours. When a story comes back under a new headline, both versions are kept. Spacing, case and quote marks are ignored.</p>
     <div class="editgrid"><div id="editlist"></div><div id="editrate" class="file"></div></div>
+    <h3 class="sub">Stories that disappeared</h3>
+    <p class="dek">A sample of articles is checked again a day or two after publishing. One counts as removed only when it is clearly gone (not found, or sent to the front page) on two checks hours apart; blocked or failed checks never count.</p>
+    <div id="removed"></div>
   </article>
 
   <article class="story s-trans" id="translation">
@@ -131,6 +134,13 @@
     <div id="transbox"></div>
     <p class="byline">Distance: 1 minus the cosine of the mean BGE-M3 vectors per language. Events with 2+ outlets in each language.</p>
   </article>
+  <article class="story s-break" id="breakout">
+    <div class="kicker k-yellow">Breakout watch &middot; forecast</div>
+    <h2 class="hed" id="hed-break">Which of today's stories will spread</h2>
+    <p class="dek">From a story's first two hours (how many outlets and languages have it, and how it broke), a model estimates the chance it reaches ten or more newsrooms. Its record on stories it had not seen is published alongside.</p>
+    <div class="breakgrid"><div id="watch"></div><div id="scorecard" class="file"></div></div>
+  </article>
+
   <article class="story s-own" id="owners">
     <div class="kicker k-green">Who owns the news &middot; permutation test</div>
     <h2 class="hed" id="hed-own">Do outlets with the same owner cover the same stories?</h2>
@@ -200,6 +210,6 @@
 </footer>
 </div>
 <script src="common.js?v=3"></script>
-<script src="analysis.js?v=11"></script>
+<script src="analysis.js?v=13"></script>
 </body>
 </html>

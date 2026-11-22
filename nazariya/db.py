@@ -236,6 +236,23 @@ title_edits = Table(
 )
 Index("ix_title_edits_seen", title_edits.c.seen_at)
 
+# Re-checks of 1 to 3 day old articles (nazariya/recheck.py): one row per article checked, and the
+# confirmation once it has been clearly gone on two checks some hours apart. Kept for good.
+removals = Table(
+    "removals", metadata,
+    Column("article_id", Integer, primary_key=True),
+    Column("outlet_id", String(40), nullable=False),
+    Column("url", Text, nullable=False),
+    Column("title", Text),
+    Column("published_at", DateTime(timezone=True)),
+    Column("status", Integer),                              # HTTP status at the last check
+    Column("first_gone_at", DateTime(timezone=True)),       # first check that found it gone
+    Column("confirmed_at", DateTime(timezone=True)),        # second check, CONFIRM_GAP later, still gone
+    Column("last_checked_at", DateTime(timezone=True), nullable=False),
+    Column("checks", Integer, nullable=False, default=0),
+)
+Index("ix_removals_outlet", removals.c.outlet_id)
+
 # Government press releases (PIB) and the event each one landed in, kept for good, so pickup by
 # ministry can be measured over months.
 releases = Table(

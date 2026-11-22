@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from ..config import ROOT
 from ..db import get_engine
-from . import attention, outlets, pages, selection
+from . import attention, forecast, outlets, pages, selection
 from .data import load
 
 OUT = ROOT / "site" / "data" / "analysis.json"
@@ -33,6 +33,8 @@ MODELS = {
     "releases": outlets.release_pickup,
     "clock": outlets.newsroom_clock,
     "ownership": outlets.ownership,
+    "forecast": forecast.run,
+    "removals": outlets.removed_stories,
 }
 
 

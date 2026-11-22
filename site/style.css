@@ -366,3 +366,10 @@ table.clock td.nv { background: none; font-weight: 700; font-size: 11px; padding
 .owner-line { font-size: 14px; color: var(--soft); margin: 10px 0 0; }
 .owner-line a { text-decoration-color: var(--pink); }
 @media (max-width: 700px) { .dumb { grid-template-columns: 1fr 52px; } .dumb .dtrack { grid-column: 1 / -1; grid-row: 2; } }
+
+/* ================= breakout watch ================= */
+.s-break { grid-column: 1 / 13; padding-left: 0; padding-right: 0; }
+.breakgrid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+.s-break .item { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+.s-break .item .score { margin-top: 0; white-space: nowrap; }
+@media (max-width: 980px) { .breakgrid { grid-template-columns: 1fr; } }

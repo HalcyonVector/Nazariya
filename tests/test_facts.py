@@ -23,6 +23,15 @@ def test_ministry_names():
     assert facts.first_line("\n   सूचना और प्रसारण मंत्रालय \n\nbody") == "सूचना और प्रसारण मंत्रालय"
 
 
+def test_removal_detection():
+    from nazariya.recheck import is_gone
+    assert is_gone(404, "https://x.com/news/a-story-1", None)
+    assert is_gone(200, "https://x.com/news/a-story-1", "https://x.com/")
+    assert not is_gone(200, "https://x.com/news/a-story-1", "https://x.com/news/a-story-1")
+    assert not is_gone(403, "https://x.com/news/a-story-1", None)   # blocked is not removed
+    assert not is_gone(429, "https://x.com/news/a-story-1", None)
+
+
 def test_death_toll():
     assert facts.death_toll("Bus falls into gorge, 12 dead in Himachal") == 12
     assert facts.death_toll("Death toll rises to 1,203 after quake") == 1203
@@ -218,3 +227,23 @@ def test_ownership_detects_sister_overlap(monkeypatch):
         cov[eid] = {o: {} for o in members}
     res = om.ownership(Facts(NOW, NOW, outs, events, cov))
     assert res["ready"] and res["excess"] > 0.1 and res["p_value"] < 0.05
+
+
+def test_breakout_forecast_learns_early_pickup():
+    from nazariya.analytics import forecast
+    from nazariya.analytics.data import Facts, Outlet
+    ids = [f"o{i}" for i in range(20)]
+    outs = {o: Outlet(o, o, "en" if i < 14 else "hi", "national", "English national") for i, o in enumerate(ids)}
+    rng = np.random.default_rng(1)
+    now = NOW + timedelta(days=30)
+    events, cov = {}, {}
+    for eid in range(600):
+        start = NOW + timedelta(hours=eid)
+        early = int(rng.integers(1, 6))
+        final = early + (int(rng.integers(6, 12)) if early >= 4 else int(rng.integers(0, 3)))
+        members = list(rng.choice(ids, size=min(final, 20), replace=False))
+        cov[eid] = {o: {"first_at": start + timedelta(minutes=30 if k < early else 300)} for k, o in enumerate(members)}
+        events[eid] = {"event_id": eid, "first_seen": start, "last_seen": start + timedelta(hours=10),
+                       "n_news_outlets": len(members), "first_report": {"lang": "en"}}
+    res = forecast.run(Facts(now, NOW, outs, events, cov))
+    assert res["ready"] and res["score"]["auc"] > 0.8
