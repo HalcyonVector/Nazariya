@@ -78,8 +78,8 @@ def findings(r: dict) -> list[dict]:
     ed = r.get("headline_edits", {})
     if ed.get("ready") and ed["by_outlet"]:
         t = ed["by_outlet"][0]
-        out.append({"section": "headline_edits", "text": f"{t['name']} changed {t['edits']} headlines after "
-                    f"publishing them, the most of any outlet."})
+        out.append({"section": "headline_edits", "text": f"{t['name']} changed {t['edits']} "
+                    f"headline{'s' if t['edits'] != 1 else ''} after publishing, the most of any outlet."})
     return out
 
 
