@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON, BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, LargeBinary,
-    MetaData, String, Table, Text, create_engine, select,
+    MetaData, String, Table, Text, create_engine, select, text,
 )
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy import event
@@ -245,7 +245,43 @@ def get_engine(url: str | None = None) -> Engine:
         # SQLite ignores ON DELETE CASCADE unless asked; production (Postgres) always cascades
         event.listen(engine, "connect", lambda conn, _: conn.execute("PRAGMA foreign_keys=ON"))
     metadata.create_all(engine)
+    enable_rls(engine)
     return engine
+
+
+# Supabase serves every table in `public` through its REST API to anyone with the project's anon
+# key, and its security advisor flags tables with row-level security off. Nazariya never uses that
+# API: the pipeline connects as the table owner, which bypasses RLS (it is not FORCEd), and the site
+# reads static JSON. So RLS goes on with no policies, closing the REST path and changing nothing for
+# the pipeline. Only tables this role owns are touched (ALTER TABLE on others would fail). Runs on
+# every start, after create_all, so new tables are covered; tables already on are skipped.
+ENABLE_RLS_SQL = """
+DO $$
+DECLARE
+    t record;
+BEGIN
+    FOR t IN
+        SELECT c.relname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relkind IN ('r', 'p')
+          AND NOT c.relrowsecurity
+          AND pg_get_userbyid(c.relowner) = current_user
+    LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.relname);
+    END LOOP;
+END
+$$;
+"""
+
+
+def enable_rls(engine: Engine) -> None:
+    """Turn on row-level security for every public table this role owns. Idempotent; Postgres only."""
+    if engine.dialect.name != "postgresql":
+        return
+    with engine.begin() as conn:
+        conn.execute(text(ENABLE_RLS_SQL))
 
 
 def insert_ignore(conn: Connection, table: Table, rows: list[dict], conflict: list[str]) -> None:
