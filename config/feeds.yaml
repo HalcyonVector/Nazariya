@@ -31,6 +31,20 @@ feeds:
       url: https://www.amarujala.com/rss/india-news.xml
     - kind: gnews
       url: https://news.google.com/rss/search?q=site%3Aamarujala.com+when%3A1d&hl=hi&gl=IN&ceid=IN:hi
+    # the news sitemap holds only ~1.6 hours; these hold a day or more of national news each
+    supplementary:
+    - kind: rss
+      url: https://www.amarujala.com/rss/india-news.xml
+    - kind: rss
+      url: https://www.amarujala.com/rss/world-news.xml
+    - kind: rss
+      url: https://www.amarujala.com/rss/business.xml
+    - kind: rss
+      url: https://www.amarujala.com/rss/breaking-news.xml
+    - kind: rss
+      url: https://www.amarujala.com/rss/uttar-pradesh.xml
+    - kind: rss
+      url: https://www.amarujala.com/rss/delhi-ncr.xml
   ani:
     access: full
     sources:

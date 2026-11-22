@@ -45,6 +45,10 @@ def group_of(lang: str, region: str) -> str:
     return "English national" if region == "national" else "English regional"
 
 
+def load_owners() -> dict[str, dict]:
+    return yaml.safe_load((CONFIG / "owners.yaml").read_text(encoding="utf-8"))["owners"]
+
+
 def load_states() -> list[dict]:
     return yaml.safe_load((CONFIG / "states.yaml").read_text(encoding="utf-8"))["states"]
 

@@ -11,7 +11,7 @@ import numpy as np
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.linalg import orthogonal_procrustes
 
-from .data import Facts
+from .data import Facts, load_owners
 
 MIN_EVENT_OUTLETS = 3     # events shared by fewer outlets say little about similarity
 MIN_PAIR_EVENTS = 15      # pairs of outlets with fewer shared events get no lead-lag cell
@@ -253,6 +253,77 @@ def newsroom_clock(f: Facts) -> dict:
     rows.sort(key=lambda r: -r["night"])
     return {"ready": True, "outlets": rows, "excluded": [f.outlets[o].name for o in sorted(skip)],
             "partial": sorted(partial)}
+
+
+OWNER_PERMUTATIONS = 2000
+
+
+def ownership(f: Facts) -> dict:
+    """Do outlets with a shared owner cover the same stories more than comparable outlets?
+
+    Similarity of two outlets: Jaccard overlap of the events (3+ outlets) each covered. A shared owner
+    often spans languages, and language alone drives what gets covered, so every same-owner pair is
+    compared with the pairs of different-owner outlets in the same language combination. Significance:
+    owners are shuffled among outlets of the same language and the statistic recomputed."""
+    owners = load_owners()
+    sets: dict[str, set] = defaultdict(set)
+    for eid, e in f.events.items():
+        if e["n_news_outlets"] >= MIN_EVENT_OUTLETS:
+            for o in f.cov[eid]:
+                sets[o].add(eid)
+    ids = sorted(o for o in sets if len(sets[o]) >= 10)
+    if len(ids) < 8:
+        return {"ready": False, "reason": "Too few outlets with 10+ shared stories yet"}
+    lang = {o: f.outlets[o].lang for o in ids}
+    group = {o: (owners.get(o) or {}).get("group") for o in ids}
+    jac = {}
+    for i, a in enumerate(ids):
+        for b in ids[i + 1:]:
+            u = len(sets[a] | sets[b])
+            jac[(a, b)] = len(sets[a] & sets[b]) / u if u else 0.0
+    combo = lambda a, b: tuple(sorted((lang[a], lang[b])))
+    base = defaultdict(list)  # language combination -> similarities of different-owner pairs
+
+    def stat(g):
+        base.clear()
+        same = []
+        for (a, b), v in jac.items():
+            if g[a] and g[a] == g[b]:
+                same.append((a, b, v))
+            else:
+                base[combo(a, b)].append(v)
+        if not same:
+            return None, []
+        excess = [v - np.mean(base[combo(a, b)]) for a, b, v in same if base[combo(a, b)]]
+        return float(np.mean(excess)), same
+
+    observed, same = stat(group)
+    if observed is None:
+        return {"ready": False, "reason": "No two outlets with a shared owner are measured yet"}
+    by_lang = defaultdict(list)
+    for o in ids:
+        by_lang[lang[o]].append(o)
+    rng = np.random.default_rng(3)
+    null = []
+    for _ in range(OWNER_PERMUTATIONS):
+        g = {}
+        for os_ in by_lang.values():
+            labels = [group[o] for o in os_]
+            rng.shuffle(labels)
+            g.update(zip(os_, labels))
+        s_, _ = stat(g)
+        if s_ is not None:
+            null.append(s_)
+    p = (1 + sum(n >= observed for n in null)) / (1 + len(null))
+    observed, same = stat(group)  # restore base for the per-group table
+    groups = defaultdict(list)
+    for a, b, v in same:
+        groups[group[a]].append({"a": a, "b": b, "a_name": f.outlets[a].name, "b_name": f.outlets[b].name,
+                                 "similarity": round(v, 3), "baseline": round(float(np.mean(base[combo(a, b)])), 3)})
+    return {"ready": True, "outlets": len(ids), "excess": round(observed, 4), "p_value": round(p, 4),
+            "permutations": len(null), "groups": [{"group": g, "pairs": ps} for g, ps in sorted(groups.items())],
+            "owners": {o: {"owner": (owners.get(o) or {}).get("owner"), "group": (owners.get(o) or {}).get("group"),
+                           "source": (owners.get(o) or {}).get("source")} for o in f.outlets}}
 
 
 def headline_edits(f: Facts, limit: int = 60) -> dict:

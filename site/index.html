@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,700&family=Work+Sans:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <div class="paper">
@@ -26,7 +26,7 @@
   <nav class="sections">
     <a href="#lead">Passed over</a><a href="#map">The map</a><a href="#first">First past the post</a><a href="#select">News value</a>
     <a href="#atlas">The atlas</a><a href="#wire">Wire desk</a><a href="#life">Shelf life</a><a href="#copy">Copy desk</a>
-    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#releases">Official business</a><a href="#clock">Clock</a><a href="#all">All stories</a>
+    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#owners">Owners</a><a href="#releases">Official business</a><a href="#clock">Clock</a><a href="#all">All stories</a>
   </nav>
   <div class="statline" id="statline"></div>
   <div class="ticker" aria-label="Findings"><div class="ticker-label">Latest</div><div class="ticker-track"><div class="ticker-run" id="ticker"></div></div></div>
@@ -131,6 +131,14 @@
     <div id="transbox"></div>
     <p class="byline">Distance: 1 minus the cosine of the mean BGE-M3 vectors per language. Events with 2+ outlets in each language.</p>
   </article>
+  <article class="story s-own" id="owners">
+    <div class="kicker k-green">Who owns the news &middot; permutation test</div>
+    <h2 class="hed" id="hed-own">Do outlets with the same owner cover the same stories?</h2>
+    <p class="dek">For each pair of sister outlets, how much of their coverage overlaps, against pairs of different-owner outlets in the same languages. Ownership is taken from each outlet's Wikipedia article, cited on its file.</p>
+    <div id="ownbox"></div>
+    <p class="byline" id="ownmethod"></p>
+  </article>
+
   <article class="story s-pib" id="releases">
     <div class="kicker k-pink">Official business &middot; PIB pickup</div>
     <h2 class="hed" id="hed-pib">Government announcements nobody ran</h2>
@@ -168,6 +176,7 @@
         <li><a href="https://pib.gov.in" target="_blank" rel="noopener">PIB</a>: government press releases</li>
         <li><a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>: people, parties and states named in articles</li>
         <li><a href="https://censusindia.gov.in" target="_blank" rel="noopener">Census of India 2011</a>: state populations</li>
+        <li><a href="https://en.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a>: who owns each outlet (cited on each outlet's file)</li>
       </ul>
     </div>
     <div>
@@ -178,6 +187,7 @@
         <li><a href="https://en.wikipedia.org/wiki/Kaplan%E2%80%93Meier_estimator" target="_blank" rel="noopener">Kaplan-Meier estimator</a></li>
         <li><a href="https://en.wikipedia.org/wiki/Granger_causality" target="_blank" rel="noopener">Lead-lag (Granger causality)</a></li>
         <li><a href="https://arxiv.org/abs/2402.03216" target="_blank" rel="noopener">BGE M3 multilingual embeddings</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Permutation_test" target="_blank" rel="noopener">Permutation test</a>, <a href="https://en.wikipedia.org/wiki/Jaccard_index" target="_blank" rel="noopener">Jaccard index</a></li>
       </ul>
     </div>
   </div>
@@ -189,7 +199,7 @@
   </div>
 </footer>
 </div>
-<script src="common.js?v=1"></script>
-<script src="analysis.js?v=10"></script>
+<script src="common.js?v=2"></script>
+<script src="analysis.js?v=11"></script>
 </body>
 </html>

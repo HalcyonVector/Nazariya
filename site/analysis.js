@@ -12,7 +12,7 @@ const SOURCE = ISSUE && /^\d{4}-W\d{2}$/.test(ISSUE) ? `data/editions/${ISSUE}.j
 getJSON(SOURCE).then((data) => {
   A = data;
   Object.entries(A.outlets).forEach(([id, o]) => (NAME[id] = o.name));
-  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, releases, clock, allStories, issues]) {
+  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, releases, clock, ownership, allStories, issues]) {
     try { f(); } catch (e) { console.error(f.name, e); }
   }
 }).catch((e) => {
@@ -77,8 +77,25 @@ function outletMap() {
       <circle class="pt" cx="${X(p.x)}" cy="${Y(p.y)}" r="${r}" fill="${GC[p.group]}" fill-opacity=".92" stroke="${INK}" stroke-width="1.5" ${out ? 'stroke-dasharray="3 2"' : ""}/>
       <text class="lbl" x="${X(p.x) + r + 4}" y="${Y(p.y) + 4}" font-size="12.5" font-weight="600" fill="${INK}" paint-order="stroke" stroke="${PAPER}" stroke-width="3" ${labelled.has(p.id) ? "" : 'visibility="hidden"'}>${esc(p.name)}</text></g>`;
   }
-  svg.innerHTML = s;
+  // sister outlets (same owner) joined by lines, shown in "owner" mode
+  const own = A.ownership?.owners || {};
+  let links = "";
+  m.points.forEach((p, i) => m.points.slice(i + 1).forEach((q) => {
+    const g = own[p.id]?.group;
+    if (g && g === own[q.id]?.group) links += `<line class="sib" x1="${X(p.x)}" y1="${Y(p.y)}" x2="${X(q.x)}" y2="${Y(q.y)}" stroke="${INK}" stroke-width="2" stroke-dasharray="6 3"><title>${esc(g)}</title></line>`;
+  }));
+  svg.innerHTML = `<g id="siblings" style="display:none">${links}</g>` + s;
   svg.querySelectorAll(".outlet").forEach((g) => (g.onclick = () => profile(g.dataset.id)));
+  if (links) {
+    const tg = document.createElement("div");
+    tg.className = "tabs";
+    tg.innerHTML = `<button class="pill on" data-m="lang">Colour by language</button><button class="pill" data-m="owner">Join sister outlets</button>`;
+    svg.parentElement.insertBefore(tg, svg);
+    tg.querySelectorAll(".pill").forEach((b) => (b.onclick = () => {
+      tg.querySelectorAll(".pill").forEach((x) => x.classList.toggle("on", x === b));
+      $("siblings").style.display = b.dataset.m === "owner" ? "" : "none";
+    }));
+  }
   const ax = (a, i) => `<div><b>Axis ${i + 1}</b> (${pct(m.inertia[i])} of the variation)
       <h5>Stories at one end</h5><ul>${a.low.slice(0, 4).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
       <h5>Stories at the other</h5><ul>${a.high.slice(0, 4).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>`;
@@ -364,4 +381,23 @@ function clock() {
   }
   el.innerHTML = h + `</table><div class="legend"><span><i class="dot" style="background:${BLUE}"></i>10 pm to 6 am</span><span><i class="dot" style="background:${PINK}"></i>daytime</span><span>Darker: more of that outlet's stories</span></div>` +
     (C.partial.length || C.excluded.length ? `<p class="small muted">Not shown yet: ${[...C.partial, ...C.excluded].map(esc).join(", ")}. Their feeds have so far shown only part of the day, or dates without times.</p>` : "");
+}
+
+// ---------------------------------------------------------------- who owns the news
+function ownership() {
+  const O = A.ownership, el = $("ownbox");
+  if (!O || !O.ready) return pending(el, O);
+  const pairs = O.groups.flatMap((g) => g.pairs.map((p) => ({ ...p, group: g.group })));
+  const mult = pairs.reduce((s, p) => s + p.similarity / p.baseline, 0) / pairs.length;
+  hed("hed-own", O.p_value < 0.05
+    ? `Sister outlets share <em>${mult.toFixed(1)}x</em> more of their stories than comparable outlets`
+    : `No clear sign that sister outlets cover the same stories (p = ${O.p_value})`);
+  const mx = Math.max(...pairs.map((p) => p.similarity), 0.2);
+  el.innerHTML = pairs.sort((a, b) => b.similarity / b.baseline - a.similarity / a.baseline).map((p) => `
+    <div class="dumb" title="overlap ${pct(p.similarity, 1)}; different-owner outlets in the same languages ${pct(p.baseline, 1)}">
+      <span><a href="${outletHref(p.a)}">${esc(p.a_name)}</a> &amp; <a href="${outletHref(p.b)}">${esc(p.b_name)}</a><small>${esc(p.group)}</small></span>
+      <div class="dtrack"><i class="base" style="left:${100 * p.baseline / mx}%"></i><i class="bar" style="left:${100 * p.baseline / mx}%;width:${100 * Math.max(0, p.similarity - p.baseline) / mx}%"></i><i class="pt" style="left:${100 * p.similarity / mx}%"></i></div>
+      <b>${pct(p.similarity)}</b></div>`).join("") +
+    `<div class="legend"><span><i class="dot" style="background:${PAPER}"></i>comparable different-owner outlets</span><span><i class="dot" style="background:${GREEN}"></i>the sister pair</span></div>`;
+  $("ownmethod").textContent = `${O.outlets} outlets. Overlap: Jaccard index of stories covered by 3+ outlets. Test: owners shuffled within each language, ${O.permutations.toLocaleString()} times; p = ${O.p_value}.`;
 }

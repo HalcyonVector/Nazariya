@@ -29,7 +29,7 @@ from sqlalchemy.engine import Engine
 from ..config import ROOT
 from ..db import as_utc, editions, outlet_positions, upsert
 from . import selection
-from .data import Facts, load_states
+from .data import Facts, load_owners, load_states
 
 DATA = ROOT / "site" / "data"
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -189,6 +189,7 @@ def dossiers(engine: Engine, f: Facts, result: dict) -> dict:
         if fo in f.outlets and e["n_news_outlets"] >= STORY_MIN_OUTLETS:
             broke[fo].append({"id": eid, "title": e["title"], "n_outlets": e["n_news_outlets"], "first_seen": _iso(e["first_seen"])})
 
+    owners = load_owners()
     n = 0
     for o, meta in f.outlets.items():
         rows = [ev[o] for ev in f.cov.values() if o in ev]
@@ -203,8 +204,12 @@ def dossiers(engine: Engine, f: Facts, result: dict) -> dict:
                 st.append({"code": sname[q]["code"], "name": sname[q]["name"], "n": c,
                            "ratio": round((c / mine) / (total_cov[q] / tot_all), 3)})
         st.sort(key=lambda r: -r["ratio"])
+        own = owners.get(o) or {}
         doss = {
             "id": o, "name": meta.name, "group": meta.group, "lang": meta.lang, "region": meta.region,
+            "owner": own.get("owner"), "owner_group": own.get("group"), "owner_source": own.get("source"),
+            "siblings": [{"id": k, "name": f.outlets[k].name} for k, v in owners.items()
+                         if k != o and k in f.outlets and own.get("group") and v.get("group") == own.get("group")],
             "events": len(rows), "articles": sum(r["n_articles"] for r in rows),
             "own": wire.get(o, {}).get("own"), "first_score": lead.get(o, {}).get("score"),
             "position": {"x": pts[o]["x"], "y": pts[o]["y"], "neighbours": pts[o]["neighbours"]} if o in pts else None,

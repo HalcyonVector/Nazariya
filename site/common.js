@@ -53,6 +53,7 @@ const FOOTER = `<footer class="colophon">
         <li><a href="https://pib.gov.in" target="_blank" rel="noopener">PIB</a>: government press releases</li>
         <li><a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>: people, parties and states named in articles</li>
         <li><a href="https://censusindia.gov.in" target="_blank" rel="noopener">Census of India 2011</a>: state populations</li>
+        <li><a href="https://en.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a>: who owns each outlet (cited on each outlet's file)</li>
       </ul>
     </div>
     <div>
@@ -63,6 +64,7 @@ const FOOTER = `<footer class="colophon">
         <li><a href="https://en.wikipedia.org/wiki/Kaplan%E2%80%93Meier_estimator" target="_blank" rel="noopener">Kaplan-Meier estimator</a></li>
         <li><a href="https://en.wikipedia.org/wiki/Granger_causality" target="_blank" rel="noopener">Lead-lag (Granger causality)</a></li>
         <li><a href="https://arxiv.org/abs/2402.03216" target="_blank" rel="noopener">BGE M3 multilingual embeddings</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Permutation_test" target="_blank" rel="noopener">Permutation test</a>, <a href="https://en.wikipedia.org/wiki/Jaccard_index" target="_blank" rel="noopener">Jaccard index</a></li>
       </ul>
     </div>
   </div>

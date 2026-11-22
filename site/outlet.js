@@ -26,6 +26,7 @@ function render(D, all) {
       <span class="kicker" style="background:${col};color:${D.group === "English regional" ? INK : "#fff"}">${esc(D.group)} &middot; outlet file</span>
       <h2 class="hed big-hed">${esc(D.name)}</h2>
       <div class="statline left">${stats.map(([k, v]) => `<span><b>${esc(v)}</b>${esc(k)}</span>`).join("")}</div>
+      <p class="owner-line">Owner: <b>${esc(D.owner || "not listed in its Wikipedia article")}</b>${D.owner_source ? ` (${extLink(D.owner_source, "source")})` : ""}${D.siblings.length ? `. Sister outlets tracked here: ${D.siblings.map((s) => `<a href="${outletHref(s.id)}">${esc(s.name)}</a>`).join(", ")}` : ""}.</p>
       <div class="pills jump">${all.map((o) => `<a class="${o.id === D.id ? "on" : ""}" href="${outletHref(o.id)}">${esc(o.name)}</a>`).join("")}</div>
     </div>
     <div class="dossier">

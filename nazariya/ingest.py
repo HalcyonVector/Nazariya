@@ -122,6 +122,28 @@ class Ingester:
                 chosen = (src["kind"], items, row)
                 break
 
+        if chosen and feed.get("supplementary") and chosen[0] != "gnews":
+            # Some outlets publish faster than their main feed can hold between two runs (Amar Ujala's
+            # news sitemap keeps ~1.6 hours of ~440 stories an hour). Their category feeds hold a day
+            # or more of national news; these are read on every run and merged in.
+            kind, items, row = chosen
+            seen = {i.url for i in items}
+            for k, src in enumerate(feed["supplementary"]):
+                t0 = time.monotonic()
+                res = await fetch_source(self.fetcher, src["kind"], src["url"], ua)
+                extra = [i for i in self.in_outlet_scope(o, res.items) if i.url not in seen]
+                seen.update(i.url for i in extra)
+                items = items + extra
+                attempts.append({
+                    "run_id": self.run_id, "outlet_id": o["id"], "source_url": res.resolved_url or src["url"],
+                    "kind": src["kind"], "position": 100 + k, "ok": res.ok, "accepted": res.ok,
+                    "http_status": res.status, "error": res.error, "items_seen": len(res.items),
+                    "items_in_scope": len(extra), "items_filtered": 0, "items_new": 0,
+                    "newest_item_at": max((i.published for i in extra if i.published), default=None),
+                    "duration_ms": int(1000 * (time.monotonic() - t0)), "fetched_at": self.now,
+                })
+            chosen = (kind, items, row)
+
         if chosen:
             kind, items, row = chosen
             stats.source_pos, stats.source_kind = row["position"], kind

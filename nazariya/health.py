@@ -85,8 +85,9 @@ def compute(now: datetime) -> list[dict]:
         ok_at = last_ok.get(oid)
         if ok_at is None or now - ok_at > DOWN_AFTER:
             flags.append("DOWN")
-        accepted = [r for r in latest_rows[oid] if r.accepted]
-        pos = accepted[0].position if accepted else None
+        # positions 100+ are supplementary feeds read alongside the main one, never a fallback
+        accepted = [r for r in latest_rows[oid] if r.accepted and (r.position or 0) < 100]
+        pos = min(r.position or 0 for r in accepted) if accepted else None
         if pos:
             flags.append("FALLBACK")
         days = sorted(daily[oid].values())

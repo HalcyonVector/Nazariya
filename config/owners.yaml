@@ -1,0 +1,157 @@
+# Who owns each outlet, as its English Wikipedia article's infobox states it (owner, else
+# publisher or parent), read on 2026-11-23. `source` is that article. `group` joins outlets with a
+# shared owner, for the ownership comparison on the outlet map; blank when the owner has only one
+# outlet here. Ownership changes: re-check the source before relying on an entry.
+owners:
+  thehindu:
+    owner: "The Hindu Group (Kasturi and Sons Limited)"
+    group: "The Hindu Group"
+    source: https://en.wikipedia.org/wiki/The_Hindu
+  indianexpress:
+    owner: "Indian Express Limited"
+    group: "Indian Express Limited"
+    source: https://en.wikipedia.org/wiki/The_Indian_Express
+  jansatta:
+    owner: "Indian Express Limited"
+    group: "Indian Express Limited"
+    source: https://en.wikipedia.org/wiki/Indian_Express_Limited
+  toi:
+    owner: "The Times Group"
+    group: "The Times Group (Bennett, Coleman & Co.)"
+    source: https://en.wikipedia.org/wiki/The_Times_of_India
+  navbharattimes:
+    owner: "Bennett, Coleman & Co. Ltd."
+    group: "The Times Group (Bennett, Coleman & Co.)"
+    source: https://en.wikipedia.org/wiki/Navbharat_Times
+  hindustantimes:
+    owner: "HT Media Ltd"
+    group: "HT Media"
+    source: https://en.wikipedia.org/wiki/Hindustan_Times
+  livehindustan:
+    owner: "HT Media Ltd"
+    group: "HT Media"
+    source: https://en.wikipedia.org/wiki/Hindustan_(newspaper)
+  ndtv:
+    owner: "Adani Group (64.71%)"
+    group: "NDTV (Adani Group)"
+    source: https://en.wikipedia.org/wiki/NDTV
+  ndtvindia:
+    owner: "New Delhi Television Ltd."
+    group: "NDTV (Adani Group)"
+    source: https://en.wikipedia.org/wiki/NDTV_India
+  indiatoday:
+    owner: "Living Media India Limited"
+    group: "Living Media (India Today Group)"
+    source: https://en.wikipedia.org/wiki/India_Today
+  aajtak:
+    owner: "Living Media"
+    group: "Living Media (India Today Group)"
+    source: https://en.wikipedia.org/wiki/Aaj_Tak
+  lallantop:
+    owner: "Living Media India"
+    group: "Living Media (India Today Group)"
+    source: https://en.wikipedia.org/wiki/Living_Media_India
+  news18:
+    owner: "Network18 Media & Investments Limited; Reliance Industries Limited"
+    group: "Network18 (Reliance)"
+    source: https://en.wikipedia.org/wiki/CNN-News18
+  firstpost:
+    owner: "Network18 Group"
+    group: "Network18 (Reliance)"
+    source: https://en.wikipedia.org/wiki/Firstpost
+  telegraph:
+    owner: "ABP Group"
+    group: "ABP Group"
+    source: https://en.wikipedia.org/wiki/The_Telegraph_(India)
+  abplive:
+    owner: "ABP Group"
+    group: "ABP Group"
+    source: https://en.wikipedia.org/wiki/ABP_News
+  republic:
+    owner: "ARG Outlier Media"
+    group: "Republic Media Network"
+    source: https://en.wikipedia.org/wiki/Republic_TV
+  theprint:
+    owner: "Printline Media Pvt. Ltd."
+    group: null
+    source: https://en.wikipedia.org/wiki/ThePrint
+  thewire:
+    owner: "Foundation for Independent Journalism"
+    group: null
+    source: https://en.wikipedia.org/wiki/The_Wire_(India)
+  scroll:
+    owner: "SCSN Pvt Ltd."
+    group: null
+    source: https://en.wikipedia.org/wiki/Scroll.in
+  thequint:
+    owner: "Quint Digital Limited"
+    group: null
+    source: https://en.wikipedia.org/wiki/The_Quint
+  opindia:
+    owner: "Aadhyaasi Media and Content Services"
+    group: null
+    source: https://en.wikipedia.org/wiki/OpIndia
+  swarajya:
+    owner: "Kovai Media Private Limited"
+    group: null
+    source: https://en.wikipedia.org/wiki/Swarajya_(magazine)
+  deccanherald:
+    owner: "The Printers, Mysore"
+    group: null
+    source: https://en.wikipedia.org/wiki/Deccan_Herald
+  tribune:
+    owner: "The Tribune Trust"
+    group: null
+    source: https://en.wikipedia.org/wiki/The_Tribune_(India)
+  nationalherald:
+    owner: "Associated Journals Limited"
+    group: null
+    source: https://en.wikipedia.org/wiki/National_Herald
+  organiser:
+    owner: "Bharat Prakashan Delhi Limited (publisher)"
+    group: null
+    source: https://en.wikipedia.org/wiki/Organiser_(magazine)
+  newindianexpress:
+    owner: "Express Publications (Madurai) Limited"
+    group: null
+    source: https://en.wikipedia.org/wiki/The_New_Indian_Express
+  onmanorama:
+    owner: "Malayala Manorama Company Ltd"
+    group: null
+    source: https://en.wikipedia.org/wiki/Malayala_Manorama
+  deccanchronicle:
+    owner: "Deccan Chronicle Holdings Limited"
+    group: null
+    source: https://en.wikipedia.org/wiki/Deccan_Chronicle
+  assamtribune:
+    owner: "Prafulla Govinda Baruah"
+    group: null
+    source: https://en.wikipedia.org/wiki/The_Assam_Tribune
+  greaterkashmir:
+    owner: "GK Communications Pvt. Ltd."
+    group: null
+    source: https://en.wikipedia.org/wiki/Greater_Kashmir
+  shillongtimes:
+    owner: null
+    group: null
+    source: https://en.wikipedia.org/wiki/The_Shillong_Times
+  jagran:
+    owner: "Jagran Prakashan Limited"
+    group: null
+    source: https://en.wikipedia.org/wiki/Dainik_Jagran
+  amarujala:
+    owner: "Amar Ujala Limited"
+    group: null
+    source: https://en.wikipedia.org/wiki/Amar_Ujala
+  bhaskar:
+    owner: "D B Corp Ltd."
+    group: null
+    source: https://en.wikipedia.org/wiki/Dainik_Bhaskar
+  zeehindi:
+    owner: "Essel Group"
+    group: null
+    source: https://en.wikipedia.org/wiki/Zee_News
+  bbchindi:
+    owner: "BBC"
+    group: null
+    source: https://en.wikipedia.org/wiki/BBC_News

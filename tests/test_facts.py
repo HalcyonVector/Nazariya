@@ -193,3 +193,28 @@ def test_positions_are_rotated_onto_last_week(tmp_path):
         w2 = {r.outlet_id: (r.x, r.y) for r in conn.execute(select(outlet_positions).where(outlet_positions.c.week == "2026-W48"))}
     for o, (x, y) in base.items():
         assert abs(w2[o][0] - x) < 1e-6 and abs(w2[o][1] - y) < 1e-6
+
+
+def test_ownership_detects_sister_overlap(monkeypatch):
+    from nazariya.analytics import outlets as om
+    from nazariya.analytics.data import Facts, Outlet
+    ids = [f"o{i}" for i in range(10)]
+    outs = {o: Outlet(o, o.upper(), "en", "national", "English national") for o in ids}
+    owners = {o: {"group": None} for o in ids}
+    owners["o0"]["group"] = owners["o1"]["group"] = "Same Co"
+    monkeypatch.setattr(om, "load_owners", lambda: owners)
+    monkeypatch.setattr(om, "OWNER_PERMUTATIONS", 300)
+    rng = np.random.default_rng(0)
+    events, cov = {}, {}
+    for eid in range(400):
+        members = {o for o in ids[2:] if rng.random() < 0.3}
+        if rng.random() < 0.5:   # the sisters move together
+            members |= {"o0", "o1"}
+        elif rng.random() < 0.3:
+            members.add(rng.choice(["o0", "o1"]))
+        if len(members) < 3:
+            continue
+        events[eid] = {"event_id": eid, "n_news_outlets": len(members)}
+        cov[eid] = {o: {} for o in members}
+    res = om.ownership(Facts(NOW, NOW, outs, events, cov))
+    assert res["ready"] and res["excess"] > 0.1 and res["p_value"] < 0.05

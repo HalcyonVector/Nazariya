@@ -32,6 +32,7 @@ MODELS = {
     "translation": selection.translation_drift,
     "releases": outlets.release_pickup,
     "clock": outlets.newsroom_clock,
+    "ownership": outlets.ownership,
 }
 
 
