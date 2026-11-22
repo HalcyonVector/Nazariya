@@ -1,0 +1,52 @@
+name: publish
+
+# Puts site changes (design, copy, page scripts) live within a minute, without waiting for the next
+# four-hourly pipeline run. The data the pages show (site/data/) is produced only by the pipeline,
+# so this takes it from the latest successful pipeline run's Pages artifact and lays the repository's
+# current site files over it.
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the latest pipeline data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id=$(gh run list --workflow ingest.yml --status success --limit 10 --json databaseId -q '.[].databaseId' | while read id; do
+            if gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$id/artifacts" -q '.artifacts[] | select(.name=="github-pages" and .expired==false) | .id' | grep -q .; then echo "$id"; break; fi
+          done)
+          if [ -z "$run_id" ]; then echo "::error::No pipeline run with a live Pages artifact; run the ingest workflow first"; exit 1; fi
+          echo "using data from pipeline run $run_id"
+          mkdir -p prev
+          gh run download "$run_id" -n github-pages -D prev
+          tar -xf prev/artifact.tar -C prev
+          rm -rf site/data
+          cp -r prev/data site/data
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
