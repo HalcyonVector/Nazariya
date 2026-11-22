@@ -14,8 +14,10 @@ dependencies = [
 
 [project.optional-dependencies]
 pg = ["psycopg[binary]>=3.2"]
-# install CPU torch first: pip install torch --index-url https://download.pytorch.org/whl/cpu
-ml = ["sentence-transformers>=3.0", "numpy>=1.26", "scikit-learn>=1.5"]
+# the models and the tests: light, no torch
+analysis = ["numpy>=1.26", "scipy>=1.11", "scikit-learn>=1.5"]
+# embedding as well; install CPU torch first: pip install torch --index-url https://download.pytorch.org/whl/cpu
+ml = ["sentence-transformers>=3.0", "numpy>=1.26", "scipy>=1.11", "scikit-learn>=1.5"]
 dev = ["pytest>=8"]
 
 [build-system]

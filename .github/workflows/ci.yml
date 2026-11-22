@@ -13,5 +13,6 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dev]"
+      # the tests need the analysis libraries, not the embedding stack (torch is imported lazily)
+      - run: pip install -e ".[analysis,dev]"
       - run: pytest -q
