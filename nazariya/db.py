@@ -236,6 +236,19 @@ title_edits = Table(
 )
 Index("ix_title_edits_seen", title_edits.c.seen_at)
 
+# Government press releases (PIB) and the event each one landed in, kept for good, so pickup by
+# ministry can be measured over months.
+releases = Table(
+    "releases", metadata,
+    Column("article_id", Integer, primary_key=True),
+    Column("event_id", Integer),
+    Column("ministry_raw", Text),   # the issuing body as the release names it (PIB's feed is Hindi)
+    Column("ministry", Text),       # English name from config/ministries.yaml, else the raw name
+    Column("title", Text, nullable=False),
+    Column("url", Text, nullable=False),
+    Column("published_at", DateTime(timezone=True)),
+)
+
 # Each outlet's place on the outlet map once a week (rotated onto the previous week's map), so the
 # dossier can show how an outlet's news judgement moves over time.
 outlet_positions = Table(

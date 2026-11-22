@@ -15,6 +15,14 @@ from nazariya.ingest import headline_edits
 NOW = datetime(2026, 11, 20, 12, tzinfo=timezone.utc)
 
 
+def test_ministry_names():
+    assert facts.ministry_name("शिक्षा मंत्रालय") == "Ministry of Education"
+    assert facts.ministry_name("  स्वास्थ्य एवं परिवार कल्याण मंत्रालय ") == "Ministry of Health and Family Welfare"
+    assert facts.ministry_name("कोई नया विभाग") == "कोई नया विभाग"  # unknown body: kept as given
+    assert facts.ministry_name("किसने कहा कि सिर्फ लड़के ही बाघ की तरह दहाड़ सकते हैं?") == "Not stated"
+    assert facts.first_line("\n   सूचना और प्रसारण मंत्रालय \n\nbody") == "सूचना और प्रसारण मंत्रालय"
+
+
 def test_death_toll():
     assert facts.death_toll("Bus falls into gorge, 12 dead in Himachal") == 12
     assert facts.death_toll("Death toll rises to 1,203 after quake") == 1203

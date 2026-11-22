@@ -1,0 +1,71 @@
+# PIB serves its Hindi feed, whose releases open with the issuing body's Hindi name. These are the
+# English names used on the site. Matching ignores spaces and treats "एवं" and "और" (both "and")
+# alike; a body not listed here is shown under its Hindi name.
+ministries:
+  प्रधानमंत्री कार्यालय: Prime Minister's Office
+  राष्ट्रपति सचिवालय: President's Secretariat
+  उप राष्ट्रपति सचिवालय: Vice President's Secretariat
+  उपराष्ट्रपति सचिवालय: Vice President's Secretariat
+  मंत्रिमंडल: Cabinet
+  मंत्रिमंडल सचिवालय: Cabinet Secretariat
+  लोकसभा सचिवालय: Lok Sabha Secretariat
+  लोक सभा सचिवालय: Lok Sabha Secretariat
+  राज्यसभा सचिवालय: Rajya Sabha Secretariat
+  राज्य सभा सचिवालय: Rajya Sabha Secretariat
+  गृह मंत्रालय: Ministry of Home Affairs
+  रक्षा मंत्रालय: Ministry of Defence
+  वित्त मंत्रालय: Ministry of Finance
+  विदेश मंत्रालय: Ministry of External Affairs
+  शिक्षा मंत्रालय: Ministry of Education
+  सूचना और प्रसारण मंत्रालय: Ministry of Information and Broadcasting
+  स्वास्थ्य और परिवार कल्याण मंत्रालय: Ministry of Health and Family Welfare
+  कृषि और किसान कल्याण मंत्रालय: Ministry of Agriculture and Farmers Welfare
+  रेल मंत्रालय: Ministry of Railways
+  सड़क परिवहन और राजमार्ग मंत्रालय: Ministry of Road Transport and Highways
+  वाणिज्य और उद्योग मंत्रालय: Ministry of Commerce and Industry
+  जनजातीय कार्य मंत्रालय: Ministry of Tribal Affairs
+  जल शक्ति मंत्रालय: Ministry of Jal Shakti
+  ग्रामीण विकास मंत्रालय: Ministry of Rural Development
+  आवासन और शहरी कार्य मंत्रालय: Ministry of Housing and Urban Affairs
+  पर्यावरण, वन और जलवायु परिवर्तन मंत्रालय: Ministry of Environment, Forest and Climate Change
+  विद्युत मंत्रालय: Ministry of Power
+  नवीन और नवीकरणीय ऊर्जा मंत्रालय: Ministry of New and Renewable Energy
+  पेट्रोलियम और प्राकृतिक गैस मंत्रालय: Ministry of Petroleum and Natural Gas
+  कोयला मंत्रालय: Ministry of Coal
+  खान मंत्रालय: Ministry of Mines
+  इस्पात मंत्रालय: Ministry of Steel
+  संस्कृति मंत्रालय: Ministry of Culture
+  पर्यटन मंत्रालय: Ministry of Tourism
+  युवा कार्यक्रम और खेल मंत्रालय: Ministry of Youth Affairs and Sports
+  महिला और बाल विकास मंत्रालय: Ministry of Women and Child Development
+  सामाजिक न्याय और अधिकारिता मंत्रालय: Ministry of Social Justice and Empowerment
+  अल्पसंख्यक कार्य मंत्रालय: Ministry of Minority Affairs
+  श्रम और रोजगार मंत्रालय: Ministry of Labour and Employment
+  कौशल विकास और उद्यमशीलता मंत्रालय: Ministry of Skill Development and Entrepreneurship
+  इलेक्ट्रॉनिकी और सूचना प्रौद्योगिकी मंत्रालय: Ministry of Electronics and Information Technology
+  संचार मंत्रालय: Ministry of Communications
+  विज्ञान और प्रौद्योगिकी मंत्रालय: Ministry of Science and Technology
+  पृथ्वी विज्ञान मंत्रालय: Ministry of Earth Sciences
+  अंतरिक्ष विभाग: Department of Space
+  परमाणु ऊर्जा विभाग: Department of Atomic Energy
+  आयुष मंत्रालय: Ministry of AYUSH
+  उपभोक्ता कार्य, खाद्य और सार्वजनिक वितरण मंत्रालय: Ministry of Consumer Affairs, Food and Public Distribution
+  खाद्य प्रसंस्करण उद्योग मंत्रालय: Ministry of Food Processing Industries
+  रसायन और उर्वरक मंत्रालय: Ministry of Chemicals and Fertilizers
+  सूक्ष्म, लघु और मध्यम उद्यम मंत्रालय: Ministry of Micro, Small and Medium Enterprises
+  वस्त्र मंत्रालय: Ministry of Textiles
+  पत्तन, पोत परिवहन और जलमार्ग मंत्रालय: Ministry of Ports, Shipping and Waterways
+  नागरिक उड्डयन मंत्रालय: Ministry of Civil Aviation
+  नागर विमानन मंत्रालय: Ministry of Civil Aviation
+  सहकारिता मंत्रालय: Ministry of Cooperation
+  पंचायती राज मंत्रालय: Ministry of Panchayati Raj
+  मत्स्यपालन, पशुपालन और डेयरी मंत्रालय: Ministry of Fisheries, Animal Husbandry and Dairying
+  पूर्वोत्तर क्षेत्र विकास मंत्रालय: Ministry of Development of North Eastern Region
+  सांख्यिकी और कार्यक्रम कार्यान्वयन मंत्रालय: Ministry of Statistics and Programme Implementation
+  कार्मिक, लोक शिकायत और पेंशन मंत्रालय: Ministry of Personnel, Public Grievances and Pensions
+  विधि और न्याय मंत्रालय: Ministry of Law and Justice
+  संसदीय कार्य मंत्रालय: Ministry of Parliamentary Affairs
+  भारत निर्वाचन आयोग: Election Commission of India
+  निर्वाचन आयोग: Election Commission of India
+  नीति आयोग: NITI Aayog
+  कौशल विकास और उद्यमिता मंत्रालय: Ministry of Skill Development and Entrepreneurship

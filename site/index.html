@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,700&family=Work+Sans:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <div class="paper">
@@ -26,7 +26,7 @@
   <nav class="sections">
     <a href="#lead">Passed over</a><a href="#map">The map</a><a href="#first">First past the post</a><a href="#select">News value</a>
     <a href="#atlas">The atlas</a><a href="#wire">Wire desk</a><a href="#life">Shelf life</a><a href="#copy">Copy desk</a>
-    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#all">All stories</a>
+    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#releases">Official business</a><a href="#clock">Clock</a><a href="#all">All stories</a>
   </nav>
   <div class="statline" id="statline"></div>
   <div class="ticker" aria-label="Findings"><div class="ticker-label">Latest</div><div class="ticker-track"><div class="ticker-run" id="ticker"></div></div></div>
@@ -131,6 +131,21 @@
     <div id="transbox"></div>
     <p class="byline">Distance: 1 minus the cosine of the mean BGE-M3 vectors per language. Events with 2+ outlets in each language.</p>
   </article>
+  <article class="story s-pib" id="releases">
+    <div class="kicker k-pink">Official business &middot; PIB pickup</div>
+    <h2 class="hed" id="hed-pib">Government announcements nobody ran</h2>
+    <p class="dek">Every press release from the Press Information Bureau, matched to the news events it landed in. A release counts as reported if any tracked outlet covered that event within two days.</p>
+    <div id="pibbox"></div>
+    <p class="byline">Ministry read from each release's opening line. 95% Wilson intervals on hover.</p>
+  </article>
+
+  <article class="story s-clock" id="clock">
+    <div class="kicker k-blue">The newsroom clock</div>
+    <h2 class="hed" id="hed-clock">When each newsroom publishes</h2>
+    <p class="dek">Each row is an outlet, each column an hour of the day in IST; darker means more of its stories first appeared then. Sorted by how much it publishes between 10 pm and 6 am.</p>
+    <div id="clockbox" class="scroll"></div>
+  </article>
+
   <article class="story s-all" id="all">
     <div class="kicker k-yellow">The week's stories</div>
     <h2 class="hed" id="hed-all">Every story three or more newsrooms covered</h2>
@@ -175,6 +190,6 @@
 </footer>
 </div>
 <script src="common.js?v=1"></script>
-<script src="analysis.js?v=9"></script>
+<script src="analysis.js?v=10"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
 from ..config import CONFIG
-from ..db import as_utc, copies, coverage, event_facts, outlets, title_edits
+from ..db import as_utc, copies, coverage, event_facts, outlets, releases, title_edits
 
 
 @dataclass
@@ -32,6 +32,7 @@ class Facts:
     cov: dict[int, dict[str, dict]]              # event_id -> outlet_id -> coverage row
     copies: list[dict] = field(default_factory=list)
     edits: list[dict] = field(default_factory=list)
+    releases: list[dict] = field(default_factory=list)
 
     @property
     def days(self) -> float:
@@ -73,8 +74,12 @@ def load(engine: Engine, days: float = 28, now: datetime | None = None) -> Facts
                                              .order_by(title_edits.c.seen_at.desc())).mappings()]
     for e in eds:
         e["seen_at"], e["published_at"] = as_utc(e["seen_at"]), as_utc(e["published_at"])
+    with engine.connect() as conn:
+        rels = [dict(r) for r in conn.execute(select(releases).where(releases.c.published_at >= since)).mappings()]
+    for r in rels:
+        r["published_at"] = as_utc(r["published_at"])
     # events no news outlet covered (only PIB/ANI) are not news coverage
     evs = {k: v for k, v in evs.items() if k in cov}
     for e in evs.values():
         e["n_news_outlets"] = len(cov[e["event_id"]])
-    return Facts(now, since, outs, evs, cov, cps, eds)
+    return Facts(now, since, outs, evs, cov, cps, eds, rels)

@@ -30,6 +30,8 @@ MODELS = {
     "copying": outlets.copy_network,
     "headline_edits": outlets.headline_edits,
     "translation": selection.translation_drift,
+    "releases": outlets.release_pickup,
+    "clock": outlets.newsroom_clock,
 }
 
 
@@ -66,6 +68,10 @@ def findings(r: dict) -> list[dict]:
         t = ll["rank"][0]
         out.append({"section": "lead_lag", "text": f"{t['name']} published ahead of the median outlet on "
                     f"{100 * t['score']:.0f}% of the stories it shared with others, the most of any outlet."})
+    rp = r.get("releases", {})
+    if rp.get("ready"):
+        out.append({"section": "releases", "text": f"{100 * (1 - rp['reported_share']):.0f}% of {rp['releases']} government "
+                    f"press releases were not picked up by any of the news outlets tracked."})
     ed = r.get("headline_edits", {})
     if ed.get("ready") and ed["by_outlet"]:
         t = ed["by_outlet"][0]

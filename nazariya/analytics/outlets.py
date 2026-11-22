@@ -191,6 +191,70 @@ def copy_network(f: Facts) -> dict:
             "nodes": [{"id": o, "name": f.outlets[o].name, "group": f.outlets[o].group, "articles": vol[o]} for o in nodes]}
 
 
+RELEASE_MATURE_H = 48  # a release gets two days to be picked up before it is judged
+
+
+def release_pickup(f: Facts) -> dict:
+    """Government press releases (PIB) and how many news outlets covered the event each one landed
+    in. Judged only once a release is RELEASE_MATURE_H hours old."""
+    mature = [r for r in f.releases if r["published_at"] and (f.now - r["published_at"]).total_seconds() >= RELEASE_MATURE_H * 3600]
+    if len(mature) < 30:
+        return {"ready": False, "reason": f"{len(mature)} releases are old enough to judge so far; this needs 30"}
+    def outlets_for(r):
+        return len(f.cov.get(r["event_id"], {})) if r["event_id"] is not None else 0
+    by = defaultdict(list)
+    for r in mature:
+        by[r["ministry"] or "Not stated"].append(outlets_for(r))
+    rows = []
+    for m, ns in by.items():
+        k = sum(n > 0 for n in ns)
+        lo, hi = wilson(k, len(ns))
+        rows.append({"ministry": m, "releases": len(ns), "reported": round(k / len(ns), 3), "lo": round(lo, 3), "hi": round(hi, 3),
+                     "mean_outlets": round(sum(ns) / len(ns), 2)})
+    rows.sort(key=lambda r: (r["reported"], -r["releases"]))
+    unreported = sorted((r for r in mature if outlets_for(r) == 0), key=lambda r: r["published_at"], reverse=True)
+    total_k = sum(outlets_for(r) > 0 for r in mature)
+    return {"ready": True, "releases": len(mature), "reported_share": round(total_k / len(mature), 3),
+            "ministries": rows,
+            "unreported": [{"title": r["title"], "url": r["url"], "ministry": r["ministry"] or "Not stated",
+                            "published_at": r["published_at"].isoformat()} for r in unreported[:20]]}
+
+
+IST_HOURS = 5.5
+
+
+def newsroom_clock(f: Facts) -> dict:
+    """When each outlet publishes across the day (IST), from the first article it put out on each
+    story. Outlets whose feeds give dates without times are left out."""
+    skip = _undated_outlets(f)
+    hours: dict[str, list[int]] = defaultdict(lambda: [0] * 24)
+    for ev in f.cov.values():
+        for o, c in ev.items():
+            if o in skip:
+                continue
+            h = int(((c["first_at"].hour * 60 + c["first_at"].minute) / 60 + IST_HOURS) % 24)
+            hours[o][h] += 1
+    rows, partial = [], []
+    for o, hs in hours.items():
+        n = sum(hs)
+        if n < 30:
+            continue
+        # a newsroom publishes through most of the day; a feed that only ever shows a few hours
+        # (sitemaps that list just the latest items) says when we read it, not when they publish
+        if sum(1 for h in hs if h) < 16 or max(hs) / n > 0.35:
+            partial.append(f.outlets[o].name)
+            continue
+        night = sum(hs[h] for h in list(range(22, 24)) + list(range(0, 6)))
+        peak = max(range(24), key=lambda h: hs[h])
+        rows.append({"id": o, "name": f.outlets[o].name, "group": f.outlets[o].group, "n": n, "hours": hs,
+                     "night": round(night / n, 3), "peak": peak})
+    if len(rows) < 5:
+        return {"ready": False, "reason": "Too few timed stories per outlet yet"}
+    rows.sort(key=lambda r: -r["night"])
+    return {"ready": True, "outlets": rows, "excluded": [f.outlets[o].name for o in sorted(skip)],
+            "partial": sorted(partial)}
+
+
 def headline_edits(f: Facts, limit: int = 60) -> dict:
     vol = Counter()
     for ev in f.cov.values():

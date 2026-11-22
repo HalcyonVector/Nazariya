@@ -30,8 +30,9 @@ from sqlalchemy.engine import Engine
 
 from .db import (
     article_events, article_frames, article_text, article_vectors, articles, as_utc, copies, coverage,
-    entities, event_facts, events, get_engine, insert_ignore, mentions, outlets, upsert,
+    entities, event_facts, events, get_engine, insert_ignore, mentions, outlets, releases, upsert,
 )
+from .config import CONFIG
 
 REFRESH_DAYS = 4  # events active this recently are recomputed; older rows are final
 DATELINE_RE = re.compile(r"^\W{0,3}(new delhi|नई दिल्ली)\b", re.I)
@@ -182,7 +183,8 @@ def run(engine: Engine | None = None, days: float = REFRESH_DAYS, now: datetime 
             conn.execute(delete(coverage).where(coverage.c.event_id.in_(chunk)))
         insert_ignore(conn, coverage, cov_rows, ["event_id", "outlet_id"])
         n_copies = _copies(conn, now - timedelta(days=days))
-    return {"events": len(fact_rows), "coverage_rows": len(cov_rows), "copies": n_copies,
+        n_rel = _releases(conn, now - timedelta(days=days))
+    return {"releases": n_rel, "events": len(fact_rows), "coverage_rows": len(cov_rows), "copies": n_copies,
             "seconds": round(time.monotonic() - t0, 1)}
 
 
@@ -199,6 +201,59 @@ def _copies(conn, since: datetime) -> int:
                                   "agency": r.agency, "published_at": as_utc(r.published_at)} for r in rows],
                   ["article_id"])
     return len(rows)
+
+
+_MINISTRIES: dict[str, str] | None = None
+BODY_WORDS = ("मंत्रालय", "विभाग", "कार्यालय", "सचिवालय", "आयोग", "Ministry", "Department", "Office", "Secretariat",
+              "Commission", "PIB")
+
+
+def _mkey(name: str) -> str:
+    return "".join(name.replace("एवं", "और").replace("तथा", "और").split()).strip("।:-.")
+
+
+def ministry_name(raw: str | None) -> str | None:
+    """English name for the body that issued a PIB release (config/ministries.yaml), else the raw name."""
+    global _MINISTRIES
+    if not raw:
+        return None
+    if _MINISTRIES is None:
+        import yaml
+        table = yaml.safe_load((CONFIG / "ministries.yaml").read_text(encoding="utf-8"))["ministries"]
+        _MINISTRIES = {_mkey(k): v for k, v in table.items()}
+    known = _MINISTRIES.get(_mkey(raw))
+    if known:
+        return known
+    # an unlisted line counts only if it reads like an issuing body, not a sentence
+    if len(raw) <= 60 and any(w in raw for w in BODY_WORDS):
+        return raw.strip()
+    return "Not stated"
+
+
+def first_line(text: str) -> str | None:
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if line:
+            return line[:120]
+    return None
+
+
+def _releases(conn, since: datetime) -> int:
+    """PIB releases: the issuing body is the first line of the release text."""
+    rows = conn.execute(
+        select(articles.c.id, articles.c.title, articles.c.url, articles.c.published_at,
+               article_events.c.event_id, article_text.c.text)
+        .join(article_text, article_text.c.article_id == articles.c.id)
+        .outerjoin(article_events, article_events.c.article_id == articles.c.id)
+        .where(articles.c.outlet_id == "pib", articles.c.discovered_at >= since)
+    ).all()
+    out = []
+    for r in rows:
+        raw = first_line(r.text)
+        out.append({"article_id": r.id, "event_id": r.event_id, "ministry_raw": raw, "ministry": ministry_name(raw),
+                    "title": r.title, "url": r.url, "published_at": as_utc(r.published_at)})
+    upsert(conn, releases, out, ["article_id"])
+    return len(out)
 
 
 def main() -> None:

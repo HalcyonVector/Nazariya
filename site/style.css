@@ -337,3 +337,16 @@ h3.sub { font-family: var(--display); font-weight: 800; font-size: 22px; margin:
   .slist { columns: 1; }
   .s-all { grid-column: 1 / -1; }
 }
+
+/* ================= official business + newsroom clock ================= */
+.s-edits, .s-trans { border-bottom: 1px solid var(--rule); }
+.s-pib   { grid-column: 1 / 7; padding-left: 0; }
+.s-clock { grid-column: 7 / 13; padding-right: 0; border-left: 1px solid var(--rule); }
+.s-pib .wrow { grid-template-columns: 1fr 110px 46px; }
+table.clock { border-collapse: separate; border-spacing: 1.5px; font-size: 10px; width: 100%; }
+table.clock th { font-weight: 500; color: var(--mute); padding: 0 2px; white-space: nowrap; }
+table.clock th.r { text-align: right; font-size: 11.5px; color: var(--ink); font-weight: 600; padding-right: 6px; }
+table.clock th.r a { text-decoration: none; }
+table.clock td { height: 17px; min-width: 9px; }
+table.clock td.nv { background: none; font-weight: 700; font-size: 11px; padding-left: 6px; white-space: nowrap; }
+@media (max-width: 980px) { .s-pib, .s-clock { grid-column: 1 / -1; } }

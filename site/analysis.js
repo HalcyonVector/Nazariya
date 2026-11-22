@@ -12,7 +12,7 @@ const SOURCE = ISSUE && /^\d{4}-W\d{2}$/.test(ISSUE) ? `data/editions/${ISSUE}.j
 getJSON(SOURCE).then((data) => {
   A = data;
   Object.entries(A.outlets).forEach(([id, o]) => (NAME[id] = o.name));
-  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, allStories, issues]) {
+  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, releases, clock, allStories, issues]) {
     try { f(); } catch (e) { console.error(f.name, e); }
   }
 }).catch((e) => {
@@ -32,7 +32,7 @@ function header() {
     [Object.keys(A.outlets).length, "newsrooms"], [days, days > 1 ? "days of data" : "day of data"],
   ].map(([n, l]) => `<span><b>${n}</b>${l}</span>`).join("");
   $("generated").textContent = `Models updated ${ago(A.generated_at)}, from events since ${since.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} (rolling ${Math.round(A.window_days)}-day window).`;
-  const anchor = { selection: "lead", attention: "atlas", half_life: "life", lead_lag: "first", headline_edits: "edits", wire: "wire" };
+  const anchor = { releases: "releases", selection: "lead", attention: "atlas", half_life: "life", lead_lag: "first", headline_edits: "edits", wire: "wire" };
   const tick = A.findings.map((f) => `<span>${esc(f.text)}</span>`).join("");
   if (tick) $("ticker").innerHTML = tick + tick;  // doubled so the loop is seamless
   else $("ticker").closest(".ticker").remove();
@@ -332,4 +332,36 @@ function issues() {
     $("issues").innerHTML = `<h5>Past issues</h5>` + rows.map((r) =>
       `<a class="issue" href="?issue=${encodeURIComponent(r.issue)}">No. ${r.number}<small>${esc(r.issue)}</small></a>`).join("");
   }).catch(() => {});
+}
+
+// ---------------------------------------------------------------- official business (PIB)
+function releases() {
+  const R = A.releases, el = $("pibbox");
+  if (!R || !R.ready) return pending(el, R);
+  hed("hed-pib", `<em>${pct(1 - R.reported_share)}</em> of government announcements went unreported`);
+  const rows = R.ministries.filter((m) => m.releases >= 3);
+  el.innerHTML = `<h5>Share reported, by ministry (3+ releases)</h5>` + rows.map((m) => `
+    <div class="wrow" title="${m.releases} releases; 95% interval ${pct(m.lo)} to ${pct(m.hi)}; ${m.mean_outlets} outlets on average">
+      <span>${esc(m.ministry)}</span><div class="bar"><i style="width:${100 * m.reported}%;background:${m.reported < 0.5 ? PINK : BLUE}"></i></div>
+      <span class="own">${pct(m.reported)}</span></div>`).join("") +
+    (R.unreported.length ? `<h5>Recent releases nobody ran</h5>` + R.unreported.slice(0, 6).map((r) => `<div class="titem">
+      <div class="t">${extLink(r.url, esc(r.title))}</div><div class="m">${esc(r.ministry)} &middot; ${ago(r.published_at)}</div></div>`).join("") : "");
+}
+
+// ---------------------------------------------------------------- the newsroom clock
+function clock() {
+  const C = A.clock, el = $("clockbox");
+  if (!C || !C.ready) return pending(el, C);
+  const top = C.outlets[0];
+  hed("hed-clock", `${esc(top.name)} puts out <em>${pct(top.night)}</em> of its stories between 10 pm and 6 am`);
+  let h = `<table class="clock"><tr><th></th>${Array.from({ length: 24 }, (_, i) => `<th>${i % 3 === 0 ? i : ""}</th>`).join("")}<th>night</th></tr>`;
+  for (const o of C.outlets) {
+    const mx = Math.max(...o.hours);
+    h += `<tr><th class="r"><a href="${outletHref(o.id)}">${esc(o.name)}</a></th>` + o.hours.map((n, i) => {
+      const t = mx ? n / mx : 0, night = i >= 22 || i < 6;
+      return `<td title="${esc(o.name)}, ${i}:00 IST: ${n} stories" style="background:${night ? `rgba(0,120,191,${0.08 + 0.9 * t})` : `rgba(255,72,176,${0.06 + 0.9 * t})`}"></td>`;
+    }).join("") + `<td class="nv">${pct(o.night)}</td></tr>`;
+  }
+  el.innerHTML = h + `</table><div class="legend"><span><i class="dot" style="background:${BLUE}"></i>10 pm to 6 am</span><span><i class="dot" style="background:${PINK}"></i>daytime</span><span>Darker: more of that outlet's stories</span></div>` +
+    (C.partial.length || C.excluded.length ? `<p class="small muted">Not shown yet: ${[...C.partial, ...C.excluded].map(esc).join(", ")}. Their feeds have so far shown only part of the day, or dates without times.</p>` : "");
 }
