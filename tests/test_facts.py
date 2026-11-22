@@ -100,6 +100,7 @@ def test_facts_summarise_an_event(tmp_path):
     assert abs(f["lang_drift"] - 0.4) < 0.01 and f["lang_drift_n"] == 3
     assert cov["en2"].n_wire == 1 and cov["en2"].first_own_at is None  # PTI copy is not own reporting
     assert cov["en1"].first_own_at is not None
+    assert cov["hi1"].first_url == "https://x/4" and cov["hi1"].first_article_id == 4
     assert cp["outlet_id"] == "en2" and cp["source_outlet_id"] == "en1" and cp["agency"] == "PTI"
     assert facts.run(engine, now=NOW)["events"] == 1  # idempotent
 
@@ -136,3 +137,51 @@ def test_correspondence_analysis_separates_blocks():
     assert 0 < share[0] <= 1
     lo, hi = wilson(5, 10)
     assert lo < 0.5 < hi
+
+
+def test_missing_columns_are_added(tmp_path):
+    import sqlite3
+    path = tmp_path / "old.db"
+    c = sqlite3.connect(path)  # a coverage table from before the link columns existed
+    c.execute("CREATE TABLE coverage (event_id INTEGER, outlet_id VARCHAR(40), first_at DATETIME NOT NULL, "
+              "first_own_at DATETIME, n_articles INTEGER NOT NULL, n_wire INTEGER NOT NULL, PRIMARY KEY (event_id, outlet_id))")
+    c.commit(); c.close()
+    get_engine(f"sqlite:///{path}")
+    cols = {r[1] for r in sqlite3.connect(path).execute("PRAGMA table_info(coverage)")}
+    assert {"n_text", "first_article_id", "first_url", "first_title"} <= cols
+
+
+def test_weekly_edition_freezes_once_on_monday(tmp_path, monkeypatch):
+    from nazariya.analytics import pages
+    monkeypatch.setattr(pages, "DATA", tmp_path / "site")
+    engine = get_engine(f"sqlite:///{tmp_path / 't.db'}")
+    monday = datetime(2026, 11, 30, 2, tzinfo=timezone.utc)  # 07:30 IST, a Monday
+    out = pages.editions_step(engine, {"events": 5}, monday)
+    assert out == {"editions": 1, "new": "2026-W48"}  # the week that just ended
+    assert pages.editions_step(engine, {"events": 5}, monday + timedelta(hours=4))["new"] is None
+    assert pages.editions_step(engine, {"events": 5}, monday + timedelta(days=1))["new"] is None  # Tuesday
+    import json
+    idx = json.loads((tmp_path / "site" / "editions" / "index.json").read_text(encoding="utf-8"))
+    assert idx[0]["issue"] == "2026-W48" and idx[0]["number"] == 1
+    body = json.loads((tmp_path / "site" / "editions" / "2026-W48.json").read_text(encoding="utf-8"))
+    assert body["issue"]["number"] == 1
+
+
+def test_positions_are_rotated_onto_last_week(tmp_path):
+    from nazariya.analytics import pages
+    from nazariya.analytics.data import Facts
+    from nazariya.db import outlet_positions
+    engine = get_engine(f"sqlite:///{tmp_path / 't.db'}")
+    base = {"a": (1, 0), "b": (0, 1), "c": (-1, 0), "d": (0, -1), "e": (0.5, 0.5)}
+    def result(rot):
+        c, s = np.cos(rot), np.sin(rot)
+        return {"outlet_map": {"ready": True, "points": [
+            {"id": o, "x": x * c - y * s, "y": x * s + y * c, "events": 10} for o, (x, y) in base.items()]}}
+    week1 = Facts(datetime(2026, 11, 20, tzinfo=timezone.utc), NOW, {}, {}, {})
+    week2 = Facts(datetime(2026, 11, 27, tzinfo=timezone.utc), NOW, {}, {}, {})
+    pages.record_positions(engine, week1, result(0))
+    pages.record_positions(engine, week2, result(np.pi / 2))  # same map, rotated: should land back
+    with engine.connect() as conn:
+        w2 = {r.outlet_id: (r.x, r.y) for r in conn.execute(select(outlet_positions).where(outlet_positions.c.week == "2026-W48"))}
+    for o, (x, y) in base.items():
+        assert abs(w2[o][0] - x) < 1e-6 and abs(w2[o][1] - y) < 1e-6

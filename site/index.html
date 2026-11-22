@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,700&family=Work+Sans:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <div class="paper">
@@ -26,7 +26,7 @@
   <nav class="sections">
     <a href="#lead">Passed over</a><a href="#map">The map</a><a href="#first">First past the post</a><a href="#select">News value</a>
     <a href="#atlas">The atlas</a><a href="#wire">Wire desk</a><a href="#life">Shelf life</a><a href="#copy">Copy desk</a>
-    <a href="#edits">Corrections</a><a href="#translation">Translation</a>
+    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#all">All stories</a>
   </nav>
   <div class="statline" id="statline"></div>
   <div class="ticker" aria-label="Findings"><div class="ticker-label">Latest</div><div class="ticker-track"><div class="ticker-run" id="ticker"></div></div></div>
@@ -47,6 +47,7 @@
     <div class="kicker k-blue">In brief</div>
     <ol id="findings" class="brief"><li>Loading</li></ol>
     <p class="byline" id="generated"></p>
+    <div id="issues" class="issues"></div>
   </aside>
 
   <article class="story s-map" id="map">
@@ -130,6 +131,13 @@
     <div id="transbox"></div>
     <p class="byline">Distance: 1 minus the cosine of the mean BGE-M3 vectors per language. Events with 2+ outlets in each language.</p>
   </article>
+  <article class="story s-all" id="all">
+    <div class="kicker k-yellow">The week's stories</div>
+    <h2 class="hed" id="hed-all">Every story three or more newsrooms covered</h2>
+    <p class="dek">Open any story to see who broke it, who followed and when, every outlet's headline with a link to the article, and which outlets the model expected but stayed silent.</p>
+    <input class="search" id="search" type="search" placeholder="Search headlines" aria-label="Search headlines">
+    <div id="allbox" class="slist"></div>
+  </article>
 </main>
 
 <footer class="colophon">
@@ -166,6 +174,7 @@
   </div>
 </footer>
 </div>
-<script src="analysis.js?v=8"></script>
+<script src="common.js?v=1"></script>
+<script src="analysis.js?v=9"></script>
 </body>
 </html>

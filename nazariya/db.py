@@ -207,6 +207,10 @@ coverage = Table(
     Column("n_articles", Integer, nullable=False),
     Column("n_wire", Integer, nullable=False),                    # agency copy or copied text
     Column("n_text", Integer, nullable=False, default=0),         # members with extracted text
+    # the outlet's earliest article on the event, so the site can link out to it
+    Column("first_article_id", Integer),
+    Column("first_url", Text),
+    Column("first_title", Text),
 )
 Index("ix_coverage_outlet", coverage.c.outlet_id)
 
@@ -231,6 +235,26 @@ title_edits = Table(
     Column("seen_at", DateTime(timezone=True), nullable=False),
 )
 Index("ix_title_edits_seen", title_edits.c.seen_at)
+
+# Each outlet's place on the outlet map once a week (rotated onto the previous week's map), so the
+# dossier can show how an outlet's news judgement moves over time.
+outlet_positions = Table(
+    "outlet_positions", metadata,
+    Column("week", String(10), primary_key=True),  # ISO week, e.g. 2026-W48
+    Column("outlet_id", String(40), primary_key=True),
+    Column("x", Float, nullable=False),
+    Column("y", Float, nullable=False),
+    Column("events", Integer, nullable=False),
+)
+
+# The front page frozen once a week ("issues"), kept for good so past weeks stay readable.
+editions = Table(
+    "editions", metadata,
+    Column("issue", String(10), primary_key=True),  # ISO week the issue covers, e.g. 2026-W48
+    Column("number", Integer, nullable=False),
+    Column("published_at", DateTime(timezone=True), nullable=False),
+    Column("body", Text, nullable=False),            # the analysis.json of that moment
+)
 
 runs = Table(
     "runs", metadata,
@@ -314,8 +338,33 @@ def get_engine(url: str | None = None) -> Engine:
         # SQLite ignores ON DELETE CASCADE unless asked; production (Postgres) always cascades
         event.listen(engine, "connect", lambda conn, _: conn.execute("PRAGMA foreign_keys=ON"))
     metadata.create_all(engine)
+    add_missing_columns(engine)
     enable_rls(engine)
     return engine
+
+
+def add_missing_columns(engine: Engine) -> list[str]:
+    """create_all() never alters an existing table, and the pipeline's database is a long-lived
+    file. Columns added to the schema later are added here; they must be nullable or defaulted."""
+    from sqlalchemy import inspect
+    added = []
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table in metadata.sorted_tables:
+            if not insp.has_table(table.name):
+                continue
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in have:
+                    continue
+                ddl = f'{col.name} {col.type.compile(dialect=engine.dialect)}'
+                if col.default is not None and getattr(col.default, "is_scalar", False):
+                    ddl += f" DEFAULT {col.default.arg!r}"
+                conn.exec_driver_sql(f"ALTER TABLE {table.name} ADD COLUMN {ddl}")
+                added.append(f"{table.name}.{col.name}")
+    if added:
+        print(f"[db] added columns: {', '.join(added)}", file=sys.stderr)
+    return added
 
 
 # Supabase serves every table in `public` through its REST API to anyone with the project's anon

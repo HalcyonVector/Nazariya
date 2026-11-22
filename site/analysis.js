@@ -3,30 +3,16 @@
 // Headlines are written from the numbers. Every headline and outlet name comes from outside
 // sources, so all text goes through esc().
 
-const INK = "#1d1d1b", PAPER = "#f3eddf", HAIR = "#cfc6b2", MUTE = "#78736a";
-const PINK = "#ff48b0", BLUE = "#0078bf", GREEN = "#00a95c", YELLOW = "#ffe800", ORANGE = "#ff6c2f";
-const GC = { "English national": BLUE, "English regional": PINK, "Hindi": GREEN };
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const pct = (x, d = 0) => (100 * x).toFixed(d) + "%";
-const fmtX = (r) => (r == null ? "n/a" : r < 1 ? r.toFixed(2) + "x" : r.toFixed(1) + "x");
-const hours = (d) => (d == null ? "not yet" : d * 24 < 48 ? Math.round(d * 24) + " h" : d.toFixed(1) + " days");
-const ago = (iso) => {
-  const m = (Date.now() - new Date(iso)) / 60000;
-  return m < 90 ? Math.round(m) + " min ago" : m < 2880 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " days ago";
-};
-const pendingHTML = (msg) => `<div class="pending"><b>Collecting data</b>${esc(msg || "Not enough events yet.")}</div>`;
-const pending = (el, m, what) => { if (el) el.innerHTML = pendingHTML(m?.reason || what); };
-const hed = (id, html) => { const el = $(id); if (el && html) el.innerHTML = html; };
-const legendGroups = () => Object.entries(GC).map(([g, c]) => `<span><i class="dot" style="background:${c}"></i>${g}</span>`).join("");
 let A, MAP, NAME = {};
 const nm = (id) => NAME[id] || id;
 const gcol = (id) => GC[A.outlets[id]?.group] || MUTE;
 
-fetch("data/analysis.json", { cache: "no-store" }).then((r) => r.json()).then((data) => {
+const ISSUE = new URLSearchParams(location.search).get("issue");
+const SOURCE = ISSUE && /^\d{4}-W\d{2}$/.test(ISSUE) ? `data/editions/${ISSUE}.json` : "data/analysis.json";
+getJSON(SOURCE).then((data) => {
   A = data;
   Object.entries(A.outlets).forEach(([id, o]) => (NAME[id] = o.name));
-  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation]) {
+  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, allStories, issues]) {
     try { f(); } catch (e) { console.error(f.name, e); }
   }
 }).catch((e) => {
@@ -35,6 +21,9 @@ fetch("data/analysis.json", { cache: "no-store" }).then((r) => r.json()).then((d
 
 // ---------------------------------------------------------------- masthead + in brief
 function header() {
+  if (A.issue) {
+    document.querySelector(".mast").insertAdjacentHTML("afterbegin", `<div class="archive">Archived issue No. ${A.issue.number}, the week ${esc(A.issue.key)}, frozen ${when(A.issue.published_at)}. <a href="./">Back to today's paper &rarr;</a></div>`);
+  }
   const gen = new Date(A.generated_at), since = new Date(A.data_since || A.since);
   const days = Math.max(1, Math.round((Date.now() - since) / 864e5));
   $("ed-date").textContent = gen.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -59,9 +48,9 @@ function under() {
   if (!s.under_covered.length) return pending(el, null, "No event this week fell far below its predicted coverage.");
   hed("hed-lead", `${s.under_covered.length} stories the newsrooms <em>let go</em>`);
   el.innerHTML = s.under_covered.map((e) => `
-    <div class="item"><div class="t">${esc(e.title)}</div>
+    <div class="item"><a class="t" href="${storyHref(e.event_id)}">${esc(e.title)}</a>
       <div class="score"><b>${e.actual}/${Math.round(e.expected)}</b> other outlets picked it up, against the ${Math.round(e.expected)} expected</div>
-      <div class="m">Broke in ${esc(e.broke_in)}, ${ago(e.first_seen)}. Covered by ${e.outlets.map(nm).map(esc).join(", ")}.</div></div>`).join("");
+      <div class="m">Broke in ${esc(e.broke_in)}, ${ago(e.first_seen)}. Covered by ${e.outlets.map((o) => `<a href="${outletHref(o)}">${esc(nm(o))}</a>`).join(", ")}.</div></div>`).join("");
 }
 
 // ---------------------------------------------------------------- the map
@@ -121,7 +110,8 @@ function profile(id) {
       <div><small>Headline edits</small><b>${e ? e.edits : 0}</b></div>
     </div>
     <h5>Most alike</h5>
-    ${p.neighbours.map((n) => `<div class="nb"><span>${esc(n.name)}</span><span>distance ${n.d.toFixed(2)}</span></div>`).join("")}`;
+    ${p.neighbours.map((n) => `<div class="nb"><a href="${outletHref(n.id)}">${esc(n.name)}</a><span>distance ${n.d.toFixed(2)}</span></div>`).join("")}
+    <a class="cta" href="${outletHref(p.id)}">Open the full file &rarr;</a>`;
 }
 
 // ---------------------------------------------------------------- first past the post
@@ -131,7 +121,7 @@ function leadLag() {
   const top = L.rank[0];
   hed("hed-first", `${esc(top.name)} got there first <em>${pct(top.score)}</em> of the time`);
   $("rank").innerHTML = L.rank.map((r) => `
-    <div class="rrow" title="${r.n} stories; 95% interval ${pct(r.lo)} to ${pct(r.hi)}"><span>${esc(r.name)}</span>
+    <div class="rrow" title="${r.n} stories; 95% interval ${pct(r.lo)} to ${pct(r.hi)}"><a href="${outletHref(r.id)}">${esc(r.name)}</a>
       <div class="track"><div class="ci" style="left:${100 * r.lo}%;width:${100 * (r.hi - r.lo)}%;background:${GC[r.group]}"></div><div class="pt" style="left:calc(${100 * r.score}% - 3px)"></div></div>
       <span>${pct(r.score)}</span></div>`).join("") +
     `<div class="legend">${legendGroups()}<span>Bar: 95% interval</span></div>` +
@@ -273,7 +263,7 @@ function wire() {
   hed("hed-wire", `${esc(worst.name)}: <em>${pct(1 - worst.own)}</em> agency or copied text`);
   const row = (r) => `
     <div class="wrow" title="${r.articles.toLocaleString()} articles with text; 95% interval ${pct(r.lo)} to ${pct(r.hi)}${Object.keys(r.sources).length ? "; copied from: " + Object.entries(r.sources).map(([k, v]) => `${k} ${v}`).join(", ") : ""}">
-      <span>${esc(r.name)}</span>
+      <a href="${outletHref(r.id)}">${esc(r.name)}</a>
       <div class="bar"><i style="width:${100 * r.own}%;background:${GC[r.group]}"></i></div>
       <span class="own" style="${r.own < 0.5 ? `background:${PINK};padding:0 3px` : ""}">${pct(r.own)}</span></div>`;
   const rows = [...W.rows].reverse();
@@ -289,38 +279,23 @@ function copying() {
   const t = C.edges[0];
   hed("hed-copy", `${esc(nm(t.target))} ran <em>${t.n}</em> stories first published by ${esc(nm(t.source))}`);
   el.innerHTML = C.edges.slice(0, 20).map((e) => `
-    <div class="crow"><span><i class="dot" style="background:${gcol(e.source)}"></i>${esc(nm(e.source))}</span><span class="arrow">&rarr;</span>
-      <span><i class="dot" style="background:${gcol(e.target)}"></i>${esc(nm(e.target))}</span>
+    <div class="crow"><a href="${outletHref(e.source)}"><i class="dot" style="background:${gcol(e.source)}"></i>${esc(nm(e.source))}</a><span class="arrow">&rarr;</span>
+      <a href="${outletHref(e.target)}"><i class="dot" style="background:${gcol(e.target)}"></i>${esc(nm(e.target))}</a>
       <span class="n">${e.n} stories${e.share_of_target != null ? `, ${pct(e.share_of_target, 1)}` : ""}</span></div>`).join("") +
     `<p class="small muted">Read: the outlet on the right ran text first published by the one on the left. The percentage is the share of the right-hand outlet's articles.</p>`;
 }
 
 // ---------------------------------------------------------------- corrections
-function diffWords(a, b) {
-  const x = a.split(/\s+/), y = b.split(/\s+/);
-  const n = x.length, m = y.length, L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
-  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
-  const out = []; let i = 0, j = 0;
-  while (i < n && j < m) {
-    if (x[i] === y[j]) { out.push(esc(x[i])); i++; j++; }
-    else if (L[i + 1][j] >= L[i][j + 1]) out.push(`<del>${esc(x[i++])}</del>`);
-    else out.push(`<ins>${esc(y[j++])}</ins>`);
-  }
-  while (i < n) out.push(`<del>${esc(x[i++])}</del>`);
-  while (j < m) out.push(`<ins>${esc(y[j++])}</ins>`);
-  return out.join(" ");
-}
-
 function edits() {
   const E = A.headline_edits;
   if (!E.ready) { pending($("editlist"), null, "No changed headlines yet. The log starts with the scheduled runs."); $("editrate").remove(); return; }
   hed("hed-edits", `<em>${E.total.toLocaleString()}</em> headlines changed after publishing`);
   $("editlist").innerHTML = E.recent.slice(0, 20).map((e) => `
-    <div class="edit"><div class="o"><span class="tag" style="background:${gcol(e.outlet_id)};color:#fff">${esc(e.outlet)}</span>
-      ${e.minutes_after != null ? ` changed within ${e.minutes_after < 120 ? e.minutes_after + " min" : Math.round(e.minutes_after / 60) + " h"} of publishing` : ""} &middot; <a href="${esc(e.url)}" target="_blank" rel="noopener">article</a></div>
+    <div class="edit"><div class="o"><a class="tag" href="${outletHref(e.outlet_id)}" style="background:${gcol(e.outlet_id)};color:#fff">${esc(e.outlet)}</a>
+      ${e.minutes_after != null ? ` changed within ${e.minutes_after < 120 ? e.minutes_after + " min" : Math.round(e.minutes_after / 60) + " h"} of publishing` : ""} &middot; ${extLink(e.url, "read the article")}</div>
       <div class="h">${diffWords(e.old, e.new)}</div></div>`).join("");
   $("editrate").innerHTML = `<h5 style="margin-top:4px">Per 1,000 articles</h5>` + E.by_outlet.slice(0, 15).map((r) =>
-    `<div class="nb"><span>${esc(r.name)}</span><span>${r.per_1000 ?? "n/a"} (${r.edits})</span></div>`).join("");
+    `<div class="nb"><a href="${outletHref(r.id)}">${esc(r.name)}</a><span>${r.per_1000 ?? "n/a"} (${r.edits})</span></div>`).join("");
 }
 
 // ---------------------------------------------------------------- translation
@@ -328,6 +303,33 @@ function translation() {
   const T = A.translation, el = $("transbox");
   if (!T.ready) return pending(el, T);
   el.innerHTML = `<p class="small muted" style="margin-top:0">${T.events.toLocaleString()} stories covered in both languages. Median distance ${T.median.toFixed(3)}.</p>` +
-    T.top.slice(0, 5).map((e) => `<div class="titem"><div class="t">${esc(e.title)}</div>
+    T.top.slice(0, 5).map((e) => `<div class="titem"><a class="t" href="${storyHref(e.event_id)}">${esc(e.title)}</a>
       <div class="m"><b>${e.drift.toFixed(3)}</b>, further apart than ${e.percentile}% of stories &middot; ${e.en} English, ${e.hi} Hindi outlets</div></div>`).join("");
+}
+
+// ---------------------------------------------------------------- all of the week's stories
+function allStories() {
+  const box = $("allbox");
+  if (A.issue) { box.closest("article").remove(); return; }  // story pages exist only for the live window
+  getJSON("data/stories/index.json").then((rows) => {
+    if (!rows.length) return pending(box, null, "No story has reached 3 outlets yet.");
+    hed("hed-all", `<em>${rows.length.toLocaleString()}</em> stories covered by three or more newsrooms`);
+    const render = (q) => {
+      const ql = q.trim().toLowerCase();
+      const hits = rows.filter((r) => !ql || r.title.toLowerCase().includes(ql)).slice(0, 60);
+      box.innerHTML = hits.length ? hits.map((r) => `<a class="srow" href="${storyHref(r.id)}"><span class="st">${esc(r.title)}</span>
+        <span class="sm">${r.n_outlets} outlets${r.langs.hi && r.langs.en ? " &middot; both languages" : ""} &middot; ${ago(r.first_seen)}</span></a>`).join("")
+        : `<p class="muted">No story matches "${esc(q)}".</p>`;
+    };
+    $("search").oninput = (ev) => render(ev.target.value);
+    render("");
+  }).catch(() => pending(box, null, "The story list is not available yet."));
+}
+
+function issues() {
+  getJSON("data/editions/index.json").then((rows) => {
+    if (!rows.length) return;
+    $("issues").innerHTML = `<h5>Past issues</h5>` + rows.map((r) =>
+      `<a class="issue" href="?issue=${encodeURIComponent(r.issue)}">No. ${r.number}<small>${esc(r.issue)}</small></a>`).join("");
+  }).catch(() => {});
 }

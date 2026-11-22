@@ -19,6 +19,7 @@ SINGLETON_SAMPLE = 0.15
 BOOTSTRAP = 25
 MIN_FRAME_EVENTS = 150
 RNG = np.random.default_rng(11)
+LAST: dict = {}  # models of the most recent run, for predict()
 
 BASE_FEATURES = [
     ("toll_10", "Death toll of 10 or more"),
@@ -128,9 +129,33 @@ def run(f: Facts) -> dict:
                          "base_rate": round(float((y * w).sum() / w.sum()), 4),
                          "auc": round(float(np.mean(aucs)), 3), "features": feats}
 
+    LAST.update(models=models, X=X)
     return {"ready": bool(groups), "groups": groups,
             "under_covered": _surprises(f, X, models, under=True),
             "over_covered": _surprises(f, X, models, under=False)}
+
+
+def predict(f: Facts, events: list[int]) -> dict[int, dict[str, float]]:
+    """Each outlet's modelled probability of covering each event (from the last run's fit); the
+    outlet that broke the event is left out, as in the model."""
+    if not LAST.get("models"):
+        return {}
+    out: dict[int, dict[str, float]] = {e: {} for e in events}
+    for m, outs in LAST["models"].values():
+        Xr, _, _, g = _rows(f, LAST["X"], outs, events, {})
+        if not len(Xr):
+            continue
+        p = m.predict_proba(Xr)[:, 1]
+        # _rows walks events in order and outlets in order, skipping each event's breaking outlet
+        k = 0
+        for eid in events:
+            first = (f.events[eid].get("first_report") or {}).get("outlet")
+            for o in outs:
+                if o == first:
+                    continue
+                out[eid][o] = float(p[k])
+                k += 1
+    return out
 
 
 def _surprises(f: Facts, X: dict, models: dict, under: bool, days: float = 7, top: int = 15) -> list[dict]:
@@ -156,7 +181,7 @@ def _surprises(f: Facts, X: dict, models: dict, under: bool, days: float = 7, to
         z = (act[eid] - exp[eid]) / math.sqrt(var[eid])
         if (under and exp[eid] >= 4 and z < -2) or (not under and z > 2):
             out.append({"event_id": eid, "title": e["title"], "first_seen": e["first_seen"].isoformat(),
-                        "broke_in": f.outlets[first].name if first in f.outlets else first,
+                        "broke_in": f.outlets[first].name if first in f.outlets else {"ani": "ANI (news agency)", "pib": "PIB (government press releases)"}.get(first, first),
                         "expected": round(exp[eid], 1), "actual": int(act[eid]), "z": round(z, 2),
                         "outlets": sorted(f.cov[eid])})
     out.sort(key=lambda r: r["z"] if under else -r["z"])

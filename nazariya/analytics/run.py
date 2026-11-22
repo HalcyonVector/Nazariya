@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from ..config import ROOT
 from ..db import get_engine
-from . import attention, outlets, selection
+from . import attention, outlets, pages, selection
 from .data import load
 
 OUT = ROOT / "site" / "data" / "analysis.json"
@@ -95,6 +95,19 @@ def run(days: float = WINDOW_DAYS) -> dict:
     result["findings"] = findings(result)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(result, ensure_ascii=False, default=str), encoding="utf-8")
+    steps = {
+        "stories": lambda: pages.stories(f),
+        "positions": lambda: pages.record_positions(engine, f, result),
+        "dossiers": lambda: pages.dossiers(engine, f, result),
+        "editions": lambda: pages.editions_step(engine, result, f.now),
+    }
+    for name, step in steps.items():
+        t = time.monotonic()
+        try:
+            print(f"[pages] {name}: {step()}")
+        except Exception:
+            traceback.print_exc()
+        timings[name] = round(time.monotonic() - t, 1)
     return {"events": len(f.events), "ready": [k for k in MODELS if result[k].get("ready")],
             "seconds": timings, "total_s": round(time.monotonic() - t0, 1)}
 

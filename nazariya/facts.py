@@ -88,7 +88,7 @@ def run(engine: Engine | None = None, days: float = REFRESH_DAYS, now: datetime 
         art_ids = []
         for chunk in _chunks(ev_ids):
             for r in conn.execute(
-                select(article_events.c.event_id, articles.c.id, articles.c.outlet_id, articles.c.title,
+                select(article_events.c.event_id, articles.c.id, articles.c.outlet_id, articles.c.title, articles.c.url,
                        articles.c.lang, articles.c.published_at, articles.c.date_fixed, articles.c.agency,
                        articles.c.syndicated_of, articles.c.status)
                 .join(articles, articles.c.id == article_events.c.article_id)
@@ -165,8 +165,10 @@ def run(engine: Engine | None = None, days: float = REFRESH_DAYS, now: datetime 
         for o, oms in by_outlet.items():
             own = [as_utc(m.published_at) for m in oms
                    if not m.date_fixed and m.published_at and not m.agency and not m.syndicated_of]
+            earliest = min(oms, key=lambda m: (as_utc(m.published_at) or now, m.id))
             cov_rows.append({
                 "event_id": e["id"], "outlet_id": o,
+                "first_article_id": earliest.id, "first_url": earliest.url, "first_title": earliest.title,
                 "first_at": min(as_utc(m.published_at) or now for m in oms),
                 "first_own_at": min(own) if own else None,
                 "n_articles": len(oms), "n_wire": sum(bool(m.agency or m.syndicated_of) for m in oms),
