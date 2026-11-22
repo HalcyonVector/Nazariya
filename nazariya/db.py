@@ -60,6 +60,8 @@ articles = Table(
     Column("syndicated_of", Integer),  # other outlet, near-identical text (wire copy)
     Column("error", Text),
     Column("extracted_at", DateTime(timezone=True)),
+    # ids are never reused after retention deletes rows: the long-lived fact tables refer to them
+    sqlite_autoincrement=True,
 )
 Index("ix_articles_outlet_published", articles.c.outlet_id, articles.c.published_at)
 Index("ix_articles_status", articles.c.status)
@@ -100,6 +102,7 @@ events = Table(
     Column("centroid", LargeBinary),  # float32 sum of member vectors; NULL once the event closes
     Column("model", String(40), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
+    sqlite_autoincrement=True,
 )
 Index("ix_events_last_seen", events.c.last_seen)
 
@@ -162,6 +165,72 @@ article_stances = Table(
     Column("model", String(60), nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
 )
+
+# ---------- long-lived facts (nazariya/facts.py) ----------
+# Raw articles are deleted after RETAIN_DAYS; these small tables are what the models read, and
+# retention never touches them. No foreign keys, so they survive their source rows.
+
+event_facts = Table(
+    "event_facts", metadata,
+    Column("event_id", Integer, primary_key=True),
+    Column("first_seen", DateTime(timezone=True), nullable=False),
+    Column("last_seen", DateTime(timezone=True), nullable=False),
+    Column("n_articles", Integer, nullable=False),
+    Column("n_outlets", Integer, nullable=False),
+    Column("title", Text),
+    Column("first_outlet", String(40)),
+    Column("first_lang", String(8)),
+    Column("langs", JSON),             # {lang: n outlets}
+    Column("states", JSON),            # [state qid, ...] named in member articles
+    Column("n_people", Integer),       # distinct linked persons
+    Column("n_politicians", Integer),  # linked persons who are Indian politicians
+    Column("toll", Integer),           # largest death toll in a member headline, if any
+    Column("wire", Boolean),           # any member carries agency copy
+    Column("govt", Boolean),           # a government press release (PIB) is a member
+    Column("delhi_dateline", Boolean), # any member text opens with a New Delhi dateline
+    Column("frame", String(30)),       # most common predicted frame among members
+    # the same features for the first report alone (how the event looked when it broke): the
+    # selection model uses these, since totals over all members partly result from wide coverage
+    Column("first_report", JSON),
+    Column("lang_drift", Float),       # 1 - cosine(mean English vector, mean Hindi vector)
+    Column("lang_drift_n", Integer),   # vectors behind lang_drift
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_event_facts_first_seen", event_facts.c.first_seen)
+
+coverage = Table(
+    "coverage", metadata,
+    Column("event_id", Integer, primary_key=True),
+    Column("outlet_id", String(40), primary_key=True),
+    Column("first_at", DateTime(timezone=True), nullable=False),  # earliest member article
+    Column("first_own_at", DateTime(timezone=True)),              # earliest dated non-wire article
+    Column("n_articles", Integer, nullable=False),
+    Column("n_wire", Integer, nullable=False),                    # agency copy or copied text
+    Column("n_text", Integer, nullable=False, default=0),         # members with extracted text
+)
+Index("ix_coverage_outlet", coverage.c.outlet_id)
+
+copies = Table(
+    "copies", metadata,
+    Column("article_id", Integer, primary_key=True),
+    Column("outlet_id", String(40), nullable=False),
+    Column("source_outlet_id", String(40), nullable=False),  # outlet whose earlier text it matches
+    Column("agency", String(10)),                            # set when the copy is credited wire copy
+    Column("published_at", DateTime(timezone=True)),
+)
+
+title_edits = Table(
+    "title_edits", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("article_id", Integer, nullable=False),
+    Column("outlet_id", String(40), nullable=False),
+    Column("url", Text, nullable=False),
+    Column("old_title", Text, nullable=False),
+    Column("new_title", Text, nullable=False),
+    Column("published_at", DateTime(timezone=True)),
+    Column("seen_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_title_edits_seen", title_edits.c.seen_at)
 
 runs = Table(
     "runs", metadata,

@@ -1,0 +1,80 @@
+"""Load the fact tables into plain Python/numpy structures for the models."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import yaml
+from sqlalchemy import select
+from sqlalchemy.engine import Engine
+
+from ..config import CONFIG
+from ..db import as_utc, copies, coverage, event_facts, outlets, title_edits
+
+
+@dataclass
+class Outlet:
+    id: str
+    name: str
+    lang: str
+    region: str
+    group: str  # "English national" | "English regional" | "Hindi"
+
+
+@dataclass
+class Facts:
+    now: datetime
+    since: datetime
+    outlets: dict[str, Outlet]
+    events: dict[int, dict]                      # event_id -> event_facts row
+    cov: dict[int, dict[str, dict]]              # event_id -> outlet_id -> coverage row
+    copies: list[dict] = field(default_factory=list)
+    edits: list[dict] = field(default_factory=list)
+
+    @property
+    def days(self) -> float:
+        return (self.now - self.since).total_seconds() / 86400
+
+
+def group_of(lang: str, region: str) -> str:
+    if lang == "hi":
+        return "Hindi"
+    return "English national" if region == "national" else "English regional"
+
+
+def load_states() -> list[dict]:
+    return yaml.safe_load((CONFIG / "states.yaml").read_text(encoding="utf-8"))["states"]
+
+
+def load(engine: Engine, days: float = 28, now: datetime | None = None) -> Facts:
+    """Facts for events that started in the last `days` days, news outlets only (the PIB and ANI
+    reference feeds are kept as event features, not as outlets)."""
+    now = now or datetime.now(timezone.utc)
+    since = now - timedelta(days=days)
+    with engine.connect() as conn:
+        outs = {r.id: Outlet(r.id, r.name, r.lang or "en", r.region or "national", group_of(r.lang, r.region))
+                for r in conn.execute(select(outlets).where(outlets.c.role == "outlet"))}
+        evs = {}
+        for r in conn.execute(select(event_facts).where(event_facts.c.first_seen >= since)).mappings():
+            d = dict(r)
+            d["first_seen"], d["last_seen"] = as_utc(d["first_seen"]), as_utc(d["last_seen"])
+            evs[d["event_id"]] = d
+        cov: dict[int, dict[str, dict]] = {}
+        for r in conn.execute(select(coverage).join(event_facts, event_facts.c.event_id == coverage.c.event_id)
+                              .where(event_facts.c.first_seen >= since)).mappings():
+            if r["outlet_id"] in outs:
+                d = dict(r)
+                d["first_at"], d["first_own_at"] = as_utc(d["first_at"]), as_utc(d["first_own_at"])
+                cov.setdefault(d["event_id"], {})[d["outlet_id"]] = d
+        cps = [dict(r) for r in conn.execute(select(copies).where(copies.c.published_at >= since)).mappings()]
+        eds = [dict(r) for r in conn.execute(select(title_edits).where(title_edits.c.seen_at >= since)
+                                             .order_by(title_edits.c.seen_at.desc())).mappings()]
+    for e in eds:
+        e["seen_at"], e["published_at"] = as_utc(e["seen_at"]), as_utc(e["published_at"])
+    # events no news outlet covered (only PIB/ANI) are not news coverage
+    evs = {k: v for k, v in evs.items() if k in cov}
+    for e in evs.values():
+        e["n_news_outlets"] = len(cov[e["event_id"]])
+    return Facts(now, since, outs, evs, cov, cps, eds)

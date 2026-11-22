@@ -1,0 +1,44 @@
+# Reference data for the attention model (nazariya/analytics/attention.py).
+# population: Census of India 2011 (Primary Census Abstract). For the bodies created later, the 2011
+#   figures of their districts: Andhra Pradesh and Telangana split 2014; Ladakh = Leh + Kargil
+#   districts, Jammu and Kashmir = the 2011 state minus those; Dadra and Nagar Haveli and Daman and
+#   Diu = the two 2011 territories combined. 2011 is the latest completed census.
+# lat/lon: the Wikidata coordinate (P625) of each state's item, used only for distance from Delhi.
+# tile: [col, row] on the site's tile map. region: used as a model term (Northeast).
+states:
+  - {qid: Q1498,      code: UP, name: Uttar Pradesh,               population: 199812341, lat: 26.85,  lon: 80.91,  region: north,     tile: [4, 2]}
+  - {qid: Q1191,      code: MH, name: Maharashtra,                 population: 112374333, lat: 19.75,  lon: 75.71,  region: west,      tile: [3, 4]}
+  - {qid: Q1165,      code: BR, name: Bihar,                       population: 104099452, lat: 25.37,  lon: 85.13,  region: east,      tile: [5, 2]}
+  - {qid: Q1356,      code: WB, name: West Bengal,                 population: 91276115,  lat: 23.0,   lon: 87.0,   region: east,      tile: [6, 3]}
+  - {qid: Q1188,      code: MP, name: Madhya Pradesh,              population: 72626809,  lat: 22.97,  lon: 78.66,  region: central,   tile: [3, 3]}
+  - {qid: Q1445,      code: TN, name: Tamil Nadu,                  population: 72147030,  lat: 11.0,   lon: 79.0,   region: south,     tile: [4, 6]}
+  - {qid: Q1437,      code: RJ, name: Rajasthan,                   population: 68548437,  lat: 26.57,  lon: 73.84,  region: north,     tile: [2, 3]}
+  - {qid: Q1185,      code: KA, name: Karnataka,                   population: 61095297,  lat: 15.0,   lon: 76.0,   region: south,     tile: [3, 5]}
+  - {qid: Q1061,      code: GJ, name: Gujarat,                     population: 60439692,  lat: 23.16,  lon: 71.84,  region: west,      tile: [2, 4]}
+  - {qid: Q1159,      code: AP, name: Andhra Pradesh,              population: 49577103,  lat: 16.85,  lon: 80.87,  region: south,     tile: [4, 5]}
+  - {qid: Q22048,     code: OD, name: Odisha,                      population: 41974218,  lat: 20.15,  lon: 83.5,   region: east,      tile: [5, 4]}
+  - {qid: Q677037,    code: TG, name: Telangana,                   population: 35003674,  lat: 17.9,   lon: 79.3,   region: south,     tile: [4, 4]}
+  - {qid: Q1186,      code: KL, name: Kerala,                      population: 33406061,  lat: 10.0,   lon: 76.3,   region: south,     tile: [3, 6]}
+  - {qid: Q1184,      code: JH, name: Jharkhand,                   population: 32988134,  lat: 23.0,   lon: 85.0,   region: east,      tile: [5, 3]}
+  - {qid: Q1164,      code: AS, name: Assam,                       population: 31205576,  lat: 26.0,   lon: 93.0,   region: northeast, tile: [7, 3]}
+  - {qid: Q22424,     code: PB, name: Punjab,                      population: 27743338,  lat: 30.77,  lon: 75.47,  region: north,     tile: [2, 1]}
+  - {qid: Q1168,      code: CG, name: Chhattisgarh,                population: 25545198,  lat: 21.66,  lon: 81.92,  region: central,   tile: [4, 3]}
+  - {qid: Q1174,      code: HR, name: Haryana,                     population: 25351462,  lat: 29.18,  lon: 76.32,  region: north,     tile: [2, 2]}
+  - {qid: Q9357528,   code: DL, name: Delhi,                       population: 16787941,  lat: 28.67,  lon: 77.1,   region: north,     tile: [3, 2]}
+  - {qid: Q66278313,  code: JK, name: Jammu and Kashmir,           population: 12267013,  lat: 34.09,  lon: 74.81,  region: north,     tile: [3, 0]}
+  - {qid: Q1499,      code: UK, name: Uttarakhand,                 population: 10086292,  lat: 30.51,  lon: 78.95,  region: north,     tile: [4, 1]}
+  - {qid: Q1177,      code: HP, name: Himachal Pradesh,            population: 6864602,   lat: 31.1,   lon: 77.17,  region: north,     tile: [3, 1]}
+  - {qid: Q1363,      code: TR, name: Tripura,                     population: 3673917,   lat: 23.84,  lon: 91.28,  region: northeast, tile: [7, 5]}
+  - {qid: Q1195,      code: ML, name: Meghalaya,                   population: 2966889,   lat: 25.57,  lon: 91.88,  region: northeast, tile: [7, 4]}
+  - {qid: Q1193,      code: MN, name: Manipur,                     population: 2855794,   lat: 24.81,  lon: 93.94,  region: northeast, tile: [8, 4]}
+  - {qid: Q1599,      code: NL, name: Nagaland,                    population: 1978502,   lat: 26.23,  lon: 94.65,  region: northeast, tile: [8, 3]}
+  - {qid: Q1171,      code: GA, name: Goa,                         population: 1458545,   lat: 15.4,   lon: 74.04,  region: west,      tile: [2, 5]}
+  - {qid: Q1162,      code: AR, name: Arunachal Pradesh,           population: 1383727,   lat: 27.06,  lon: 93.37,  region: northeast, tile: [8, 2]}
+  - {qid: Q66743,     code: PY, name: Puducherry,                  population: 1247953,   lat: 11.93,  lon: 79.83,  region: south,     tile: [5, 6]}
+  - {qid: Q1502,      code: MZ, name: Mizoram,                     population: 1097206,   lat: 23.36,  lon: 92.8,   region: northeast, tile: [8, 5]}
+  - {qid: Q120971341, code: CH, name: Chandigarh,                  population: 1055450,   lat: 30.73,  lon: 76.78,  region: north,     tile: [1, 1]}
+  - {qid: Q1505,      code: SK, name: Sikkim,                      population: 610577,    lat: 27.55,  lon: 88.5,   region: northeast, tile: [6, 2]}
+  - {qid: Q77997266,  code: DD, name: Dadra and Nagar Haveli and Daman and Diu, population: 586956, lat: 20.42, lon: 72.83, region: west, tile: [1, 4]}
+  - {qid: Q40888,     code: AN, name: Andaman and Nicobar Islands, population: 380581,    lat: 11.68,  lon: 92.72,  region: east,      tile: [7, 6]}
+  - {qid: Q200667,    code: LA, name: Ladakh,                      population: 274289,    lat: 34.17,  lon: 77.58,  region: north,     tile: [4, 0]}
+  - {qid: Q26927,     code: LD, name: Lakshadweep,                 population: 64473,     lat: 10.57,  lon: 72.64,  region: south,     tile: [2, 6]}

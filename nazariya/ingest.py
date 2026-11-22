@@ -32,7 +32,7 @@ from sqlalchemy.engine import Engine
 
 from .config import load_feeds, load_filters, load_outlets, runner_of
 from .db import (
-    article_text, articles, existing_urls, fetch_runs, get_engine, insert_ignore, runs,
+    article_text, articles, fetch_runs, get_engine, insert_ignore, runs, title_edits,
     outlets as outlets_table, upsert,
 )
 from .net import Fetcher, make_client, user_agent_for
@@ -63,6 +63,7 @@ class OutletStats:
     source_kind: str | None = None
     new: int = 0
     filtered: int = 0
+    edits: int = 0
     outcomes: Counter = field(default_factory=Counter)
 
 
@@ -127,6 +128,7 @@ class Ingester:
             headline_only = kind == "gnews" or feed.get("access") == "headline_only"
             rewrites = o.get("rewrite_hosts") or {}
             candidates: dict[str, dict] = {}
+            feed_titles: dict[str, str] = {}
             for it in items:
                 published, fixed = fix_published(it.published, self.now)
                 if published is not None and self.now - published > MAX_ITEM_AGE:
@@ -152,11 +154,21 @@ class Ingester:
                     "access": "headline_only" if headline_only else None,
                     "attempts": 0,
                 })
+                # the feed's own headline (not one rebuilt from the URL), for edit tracking
+                if kind != "gnews" and it.title:
+                    feed_titles[url] = it.title
             with self.engine.begin() as conn:
-                known = existing_urls(conn, list(candidates))
+                known = known_titles(conn, list(candidates))
                 fresh = [r for u, r in candidates.items() if u not in known]
                 insert_ignore(conn, articles, fresh, ["url"])
+                edits = headline_edits(known, feed_titles, o["id"], self.now)
+                if edits:
+                    conn.execute(insert(title_edits), edits)
+                    for e in edits:
+                        conn.execute(update(articles).where(articles.c.id == e["article_id"])
+                                     .values(title=e["new_title"]))
             row["items_new"] = len(fresh)
+            stats.edits = len(edits)
             stats.new, stats.filtered = len(fresh), row["items_filtered"]
 
         with self.engine.begin() as conn:
@@ -267,6 +279,38 @@ class Ingester:
             return conn.execute(delete(article_text).where(article_text.c.expires_at < self.now)).rowcount
 
 
+def _norm_title(t: str) -> str:
+    return " ".join(t.replace("‘", "'").replace("’", "'").replace("“", '"')
+                    .replace("”", '"').split()).casefold()
+
+
+def known_titles(conn, urls: list[str]) -> dict[str, tuple]:
+    """url -> (id, stored title, published_at) for URLs already in the database."""
+    found: dict[str, tuple] = {}
+    for i in range(0, len(urls), 500):
+        rows = conn.execute(select(articles.c.url, articles.c.id, articles.c.title, articles.c.published_at)
+                            .where(articles.c.url.in_(urls[i:i + 500])))
+        found.update({r.url: (r.id, r.title, r.published_at) for r in rows})
+    return found
+
+
+def headline_edits(known: dict[str, tuple], feed_titles: dict[str, str], outlet_id: str,
+                   now: datetime) -> list[dict]:
+    """A headline counts as edited when the outlet's own feed now shows a different headline for a
+    URL it showed before. Headlines rebuilt from URL slugs never count, and neither do changes in
+    whitespace, case or quote style."""
+    out = []
+    for url, new in feed_titles.items():
+        if url not in known:
+            continue
+        aid, old, published = known[url]
+        if not old or old == title_from_url(url) or _norm_title(old) == _norm_title(new):
+            continue
+        out.append({"article_id": aid, "outlet_id": outlet_id, "url": url, "old_title": old,
+                    "new_title": new, "published_at": published, "seen_at": now})
+    return out
+
+
 def select_outlets(all_outlets: list[dict], feeds: dict, only: str | None, mvp: bool,
                    runner: str = "all") -> list[dict]:
     chosen = all_outlets if runner == "all" else [o for o in all_outlets if runner_of(o) == runner]
@@ -312,6 +356,7 @@ async def run(args: argparse.Namespace) -> None:
         totals.update(s.outcomes)
         totals["new"] += s.new
         totals["filtered"] += s.filtered
+        totals["headline_edits"] += s.edits
         src = "FAIL" if s.source_pos is None else str(s.source_pos)
         outcomes = " ".join(f"{k}={v}" for k, v in sorted(s.outcomes.items()))
         print(f"{o['id']:18s} {src:>4s} {s.source_kind or '':8s} {s.new:5d} {s.filtered:5d}  {outcomes}")

@@ -2,28 +2,31 @@ name: ingest
 
 on:
   schedule:
-    # Every 4 hours. The free-tier database has a monthly compute-hour budget and every run wakes it
-    # for ~10-15 minutes, so cadence is a budget decision: 6 runs a day, not hourly.
+    # Every 4 hours. Storage is a SQLite file kept as an encrypted release asset (scripts/state.sh),
+    # so there is no database quota; Actions minutes are free for public repositories.
     - cron: "17 */4 * * *"
   workflow_dispatch:
 
 concurrency:
+  # one writer of the state file at a time
   group: ingest
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write   # upload the encrypted state file to the "state" release
   pages: write
   id-token: write
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     outputs:
       site_ready: ${{ steps.site.outputs.ready }}
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: sqlite:///data/state.db
+      STATE_KEY: ${{ secrets.STATE_KEY }}
+      GH_TOKEN: ${{ github.token }}
       HF_HOME: ${{ github.workspace }}/.hf
     steps:
       - uses: actions/checkout@v4
@@ -31,43 +34,71 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Require database secret
+      - name: Require state key
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::Add a DATABASE_URL repository secret (Neon or Supabase Postgres connection string)"
+          if [ -z "$STATE_KEY" ]; then
+            echo "::error::Add a STATE_KEY repository secret (the passphrase that encrypts the state file)"
             exit 1
           fi
       - name: Install
         # CPU-only torch keeps the install small; runners have no GPU
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[pg,ml]"
+          pip install -e ".[ml]"
       - name: Cache embedding model
         uses: actions/cache@v4
         with:
           path: .hf
           key: hf-bge-m3-v1
+      - name: Pull state
+        id: pull
+        run: bash scripts/state.sh pull data/state.db state.db.gz.enc
+      - name: Import home-PC articles
+        # outlets marked `runner: home` block GitHub's IPs; a scheduled task on a home PC ingests
+        # them and leaves an encrypted inbox file on the same release
+        run: |
+          bash scripts/state.sh pull data/home_inbox.jsonl.gz home_inbox.jsonl.gz.enc
+          python -m nazariya.inbox import data/home_inbox.jsonl.gz
       - name: Ingest
-        # outlets marked `runner: home` block GitHub's IPs; a scheduled task on a home PC ingests them
         run: python -m nazariya.ingest --runner cloud
       - name: Cluster
-        # embeds new articles (incl. home-runner ones already in the DB) and assigns them to events.
-        # bge-m3 on a CPU runner does ~1 article/s, so embedding is capped per run (newest first) and
-        # any backlog carries over; the home PC task also embeds on its GPU when it runs.
-        run: python -m nazariya.cluster --budget-min 20
+        # bge-m3 on a CPU runner does about 1 article/s; the cap keeps a run bounded and any
+        # backlog carries over to the next run
+        run: python -m nazariya.cluster --budget-min 45
       - name: Link entities
-        # dictionary linker over the Wikidata alias table; milliseconds per article on CPU
         run: python -m nazariya.entities.run
       - name: Predict frames
-        # logistic regression over the stored bge-m3 vectors (models/framing_bge_lr.npz); no extra model
         run: python -m nazariya.framing.infer
+      - name: Update facts
+        # small long-lived summaries of each event; the models read these, not raw articles
+        run: python -m nazariya.facts
+      - name: Models
+        run: python -m nazariya.analytics.run
       - name: Export site data
         run: python -m nazariya.export
       - name: Retention
-        # keeps the free-tier database under its storage cap: raw rows 8 days, labelled/training data pinned
+        # raw rows 8 days, article text 3 days; the fact tables are kept
         run: python -m nazariya.retain
+      - name: Push state
+        # also after a failed step, so articles already ingested are not lost; never if the pull
+        # failed (that would overwrite the stored state with an empty file)
+        if: always() && steps.pull.outcome == 'success'
+        run: |
+          python - <<'EOF'
+          import sqlite3
+          c = sqlite3.connect("data/state.db")
+          ok = c.execute("PRAGMA integrity_check").fetchone()[0]
+          if ok != "ok":
+              raise SystemExit(f"state.db failed its integrity check: {ok}")
+          c.execute("VACUUM")
+          c.close()
+          EOF
+          bash scripts/state.sh push data/state.db state.db.gz.enc
+          # one rotating daily backup per weekday, so a bad push can be rolled back
+          if [ "$(date -u +%H)" -lt 4 ]; then
+            bash scripts/state.sh push data/state.db "state-backup-$(date -u +%a).db.gz.enc"
+          fi
       - name: Upload site
-        # publishing is opt-in: set the repository variable PAGES_ENABLED=true after enabling Pages
         if: vars.PAGES_ENABLED == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
@@ -77,9 +108,8 @@ jobs:
         if: vars.PAGES_ENABLED == 'true'
         run: echo "ready=true" >> "$GITHUB_OUTPUT"
       - name: Health check
-        # One outlet being down (e.g. its feed broke upstream) is shown on the Sources page as "no data";
-        # it must not block the deploy or send an email. Fails (-> email) only when more than a quarter
-        # of the cloud outlets are down at once, which means something systemic.
+        # one outlet down is shown on the Sources page as "no data"; only a systemic outage
+        # (more than a quarter of cloud outlets down) fails the run
         run: python -m nazariya.health --max-down-share 0.25
       - uses: actions/upload-artifact@v4
         if: always()
@@ -90,7 +120,6 @@ jobs:
 
   deploy:
     needs: ingest
-    # deploy whenever the site artifact was uploaded, even if the final health check failed
     if: always() && vars.PAGES_ENABLED == 'true' && needs.ingest.outputs.site_ready == 'true'
     runs-on: ubuntu-latest
     environment:

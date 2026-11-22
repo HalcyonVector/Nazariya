@@ -1,60 +1,187 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nazariya · Indian news coverage</title>
-<meta name="description" content="How Indian news outlets, in English and Hindi, cover the same events.">
+<title>Nazariya: how India's newsrooms work</title>
+<meta name="description" content="Models of how 38 Indian news outlets cover the same events: who leads, who copies, what gets ignored, and how long stories last.">
+<meta property="og:title" content="Nazariya: how India's newsrooms work">
+<meta property="og:description" content="Models of how 38 Indian news outlets cover the same events, updated every four hours.">
 <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
-<header class="site">
-  <div class="wrap">
-    <h1><a href="./">Nazariya</a></h1>
-    <span class="tag">Who covered what: the same events across ~40 Indian outlets, in English and Hindi</span>
-    <nav><a href="./" aria-current="page">Stories</a><a href="health.html">Sources</a></nav>
-  </div>
-</header>
 
-<main class="wrap">
-  <div class="controls" role="search">
-    <input type="search" id="q" placeholder="Search headlines…" aria-label="Search headlines">
-    <button class="chip" data-lang="all" aria-pressed="true">All</button>
-    <button class="chip" data-lang="cross" aria-pressed="false">English + Hindi</button>
-    <button class="chip" data-lang="en" aria-pressed="false">English only</button>
-    <button class="chip" data-lang="hi" aria-pressed="false">Hindi only</button>
-    <select id="min" aria-label="Minimum number of outlets">
-      <option value="2">2+ outlets</option>
-      <option value="3" selected>3+ outlets</option>
-      <option value="5">5+ outlets</option>
-      <option value="10">10+ outlets</option>
-    </select>
-  </div>
-  <div class="legend" aria-hidden="true">
-    <span><i class="cell covered"></i>covered</span>
-    <span><i class="cell wire"></i>wire copy only</span>
-    <span><i class="cell"></i>not covered</span>
-    <span><i class="cell nodata"></i>no data (we couldn't fetch this outlet then)</span>
-  </div>
-  <p class="entity-filter" id="entity-filter" hidden>Stories mentioning <b id="entity-name"></b>
-    <button type="button" class="chip" id="entity-clear">Clear</button></p>
-  <p class="status" id="status">Loading…</p>
-  <div id="stories"></div>
+<div class="masthead"><div class="wrap">
+  <nav class="top">
+    <a class="logo" href="./">Nazariya<b>.</b></a>
+    <div class="links">
+      <a href="#under">Ignored</a><a href="#map">Outlet map</a><a href="#lead">Who leads</a><a href="#select">What makes news</a>
+      <a href="#atlas">Attention</a><a href="#life">Half-life</a><a href="#wire">Wire</a><a href="#copy">Copying</a>
+      <a href="#edits">Edits</a><a href="#translation">Translation</a><a href="health.html">Sources</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <div class="kicker" id="kicker">Loading</div>
+      <h1>How India's newsrooms <em>actually</em> work.</h1>
+      <p class="lede">Every article from 38 English and Hindi outlets, matched into events across languages, then modelled: which outlets behave alike, who sets the agenda and who copies, what makes a story news, which stories get ignored, and how long they stay alive.</p>
+    </div>
+    <aside class="panel findings">
+      <h3>This week's findings</h3>
+      <ol id="findings"><li class="muted">Loading</li></ol>
+      <div class="muted small" id="generated"></div>
+    </aside>
+  </header>
+</div></div>
+
+<main>
+  <section id="under"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">01 / UNDER-COVERED</div><h2>Stories the newsrooms passed over</h2></div>
+      <p>For every event of the last week, the selection model (section 04) predicts how many outlets should have covered it, given how it first broke. These are the events furthest below that prediction.</p>
+    </div>
+    <div class="panel list" id="underbox"></div>
+    <div class="method"><span><b>Score</b> (actual - expected) / sd, independent per-outlet probabilities</span><span><b>Shown</b> expected 4+ outlets, z below -2</span></div>
+  </div></section>
+
+  <section id="map"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">02 / OUTLET MAP</div><h2>Which outlets behave alike</h2></div>
+      <p>Each outlet is placed by the set of events it chose to cover. Close together means similar news judgement. Faint ellipses show how much a position moves when the events are resampled. Click an outlet.</p>
+    </div>
+    <div class="mapwrap">
+      <div class="panel pad"><svg id="mapsvg" viewBox="0 0 760 520"></svg><div class="legend" id="maplegend"></div></div>
+      <aside class="panel pad" id="profile"></aside>
+    </div>
+    <div class="axes" id="axes"></div>
+    <div class="method" id="mapmethod"></div>
+  </div></section>
+
+  <section id="lead"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">03 / LEAD-LAG</div><h2>Who leads, who follows</h2></div>
+      <p>On events several outlets covered, who published their own (non-agency) report first. A cell is the median minutes the row outlet was ahead of the column outlet. The ranking is the share of events where the outlet beat the median outlet.</p>
+    </div>
+    <div class="leadwrap">
+      <div class="panel pad scroll heat" id="heat"></div>
+      <aside class="panel pad" id="rank"></aside>
+    </div>
+    <div class="method" id="leadmethod"></div>
+  </div></section>
+
+  <section id="select"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">04 / SELECTION MODEL</div><h2>What makes a story news</h2></div>
+      <p>A model of whether an outlet covers an event, from how the event looked when it first broke. Each dot is how much a feature multiplies the odds of coverage, with its 95% bootstrap interval. Right of the line raises the odds.</p>
+    </div>
+    <div class="panel pad">
+      <div class="row-between"><div class="pills" id="groups"></div><span class="muted small">Odds ratio, log scale</span></div>
+      <svg id="forest" viewBox="0 0 1000 460"></svg>
+      <div class="fit" id="fit"></div>
+    </div>
+    <div class="method"><span><b>Unit</b> (outlet, event) pair, the breaking outlet excluded</span><span><b>Method</b> logistic regression with outlet fixed effects</span><span><b>Validation</b> 5-fold, folds split by event</span></div>
+  </div></section>
+
+  <section id="atlas"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">05 / ATTENTION MODEL</div><h2>Coverage each state should get, and gets</h2></div>
+      <p>A model predicts each state's coverage from its population and its distance from Delhi. Tiles show actual divided by expected, so a state is flagged only when it is ignored beyond what its size and distance explain. Click a tile.</p>
+    </div>
+    <div class="atlas">
+      <div><div class="grid" id="grid"></div>
+        <div class="legend" style="margin-top:14px"><span>under-covered</span><span class="ramp"></span><span>over-covered</span></div></div>
+      <aside class="panel pad sticky" id="detail"></aside>
+    </div>
+    <div class="method" id="atlasmethod"></div>
+  </div></section>
+
+  <section id="life"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">06 / SURVIVAL ANALYSIS</div><h2>Story half-life</h2></div>
+      <p>How long an event keeps getting new articles after it breaks. Each curve is the share of events still being covered after a given time; the half-life is where it crosses 50%. Events still running are counted as censored, not ended.</p>
+    </div>
+    <div class="panel pad survwrap">
+      <div><div class="pills" id="dims"></div><svg id="survsvg" viewBox="0 0 700 330"></svg><div class="legend" id="survleg"></div></div>
+      <div class="hl" id="hl"></div>
+    </div>
+    <div class="method"><span><b>End of a story</b> no new article for 72 hours</span><span><b>Method</b> Kaplan-Meier, log-rank test against the rest</span></div>
+  </div></section>
+
+  <section id="wire"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">07 / WIRE DEPENDENCE</div><h2>Own reporting vs agency copy</h2></div>
+      <p>The share of each outlet's articles that are its own, as opposed to credited agency copy (PTI, ANI, IANS and others) or text that near-duplicates another outlet's earlier article.</p>
+    </div>
+    <div class="panel pad" id="wirebox"></div>
+    <div class="method"><span><b>Method</b> agency bylines + SimHash near-duplicates (6 bits of 64)</span><span><b>Interval</b> 95% Wilson</span></div>
+  </div></section>
+
+  <section id="copy"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">08 / COPYING</div><h2>Who copies whom</h2></div>
+      <p>Articles whose text near-duplicates an earlier article from a different outlet, with no agency credit. Read each row as: the second outlet ran text first published by the first.</p>
+    </div>
+    <div class="panel pad" id="copybox"></div>
+  </div></section>
+
+  <section id="edits"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">09 / HEADLINE EDITS</div><h2>Headlines changed after publishing</h2></div>
+      <p>Each outlet's feed is read every four hours. When a story already seen comes back under a different headline, both versions are logged. Changes in spacing, case or quote marks are ignored.</p>
+    </div>
+    <div class="editwrap">
+      <div class="panel pad" id="editlist"></div>
+      <aside class="panel pad" id="editrate"></aside>
+    </div>
+  </div></section>
+
+  <section id="translation"><div class="wrap">
+    <div class="sec-head">
+      <div><div class="num">10 / LOST IN TRANSLATION</div><h2>Where English and Hindi told different stories</h2></div>
+      <p>For events both English and Hindi outlets covered, how far apart the two languages' articles sit in a multilingual embedding space. Higher means the two languages emphasised different things.</p>
+    </div>
+    <div class="panel pad" id="transbox"></div>
+    <div class="method"><span><b>Measure</b> 1 - cosine between the mean English and mean Hindi BGE-M3 vectors</span><span><b>Shown</b> events with 2+ outlets in each language</span></div>
+  </div></section>
 </main>
 
-<footer class="site">
+<footer>
   <div class="wrap">
-    <p>Articles are grouped into events automatically: multilingual sentence embeddings (bge-m3) of each
-    headline and opening paragraph, clustered online with a similarity threshold. Groupings can be wrong.
-    Names under each headline are people, parties and institutions linked to Wikidata with a published
-    alias table; links can be wrong too. "Framed as" shows the angle each outlet took (Media Frames
-    Corpus categories), predicted by a model trained on LLM labels: provisional, roughly 65% agreement
-    with a stronger reference model, not yet checked against human labels.
-    Each strip shows only whether an outlet carried the story, not how it framed it.</p>
-    <p>We store headlines, links and derived data only, never article text. Source code and evaluation
-    reports: <a href="https://github.com/HalcyonVector/Nazariya">github.com/HalcyonVector/Nazariya</a>.</p>
+    <div class="fcols">
+      <div>
+        <h5>About</h5>
+        <p>Nazariya models how India's news outlets cover the same events. It measures coverage patterns, not truth or intent, and every estimate carries uncertainty; small samples are marked. <a href="https://github.com/HalcyonVector/Nazariya" target="_blank" rel="noopener">Source code</a></p>
+      </div>
+      <div>
+        <h5>Data</h5>
+        <ul>
+          <li>Outlet RSS feeds and news sitemaps: headlines, times, links (<a href="health.html" target="_blank" rel="noopener">list and status</a>)</li>
+          <li><a href="https://pib.gov.in" target="_blank" rel="noopener">PIB</a>: government press releases</li>
+          <li><a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>: people, parties and states named in articles</li>
+          <li><a href="https://censusindia.gov.in" target="_blank" rel="noopener">Census of India 2011</a>: state populations</li>
+        </ul>
+      </div>
+      <div>
+        <h5>References</h5>
+        <ul>
+          <li><a href="https://en.wikipedia.org/wiki/Correspondence_analysis" target="_blank" rel="noopener">Correspondence analysis</a></li>
+          <li><a href="https://en.wikipedia.org/wiki/Logistic_regression" target="_blank" rel="noopener">Logistic regression</a></li>
+          <li><a href="https://en.wikipedia.org/wiki/Kaplan%E2%80%93Meier_estimator" target="_blank" rel="noopener">Kaplan-Meier estimator</a></li>
+          <li><a href="https://en.wikipedia.org/wiki/Granger_causality" target="_blank" rel="noopener">Lead-lag (Granger causality)</a></li>
+          <li><a href="https://arxiv.org/abs/2402.03216" target="_blank" rel="noopener">BGE M3 multilingual embeddings</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="bottom">
+      <span>Built by <b>Sagnik</b></span>
+      <a href="https://github.com/HalcyonVector" target="_blank" rel="noopener">GitHub @HalcyonVector</a>
+      <a href="https://github.com/HalcyonVector/Nazariya" target="_blank" rel="noopener">Repository</a>
+      <a href="https://github.com/HalcyonVector/Nazariya/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+    </div>
   </div>
 </footer>
-<script src="app.js?v=4"></script>
+
+<script src="analysis.js?v=2"></script>
 </body>
 </html>

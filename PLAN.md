@@ -71,18 +71,27 @@ Frontend: Next.js static export on Vercel / GitHub Pages
   failed: the LLMs read it as "same topic". Story-level grouping will instead link events through
   shared named entities and time, with its own definition ("same named case or incident").
 
-## Free-tier budget (database)
-Neon free plan, as understood on 2026-11-01 (limits change; the console's Usage page is the truth):
-~100 compute-hours, 0.5 GB storage and a data-transfer cap per month, all reset at the month rollover.
-- **Compute**: it ran out in ~3.5 days in October (hourly runs, an extra cloud run per home-task run, long
-  embedding phases keeping the database awake, heavy dev scripts). Now: runs every 4 h, embedding done in
-  memory and written once so the database can suspend, and every Postgres run prints
-  `[db] ... estimated compute-active N min` (sum these against the 100-hour cap).
-- **Storage**: 355 MB after four days with no deletion. `nazariya/retain.py` runs every cycle: raw rows
-  8 days, article text 3 days, vectors until assigned and framed, old events; labelled pairs and the
-  framing training sample are pinned. After the first purge and compaction the database was 59 MB.
-- **Transfer**: dev scripts that pulled whole article windows were the heavy readers; keep them on local
-  caches rather than re-reading the database.
+## Free-tier budget (storage)
+Neon's free plan (~100 compute-hours a month) ran out twice: in ~3.5 days in October with hourly runs,
+and again by mid-November at one run every 4 hours. A hosted database with a monthly compute cap cannot
+carry this pipeline, so since 2026-11-23 there is no database server:
+- **State**: one SQLite file. Each Actions run downloads it from the repo's `state` release, works
+  locally and uploads it again (`scripts/state.sh`), encrypted with the STATE_KEY secret because release
+  assets of a public repo are public and the file holds a few days of article text. Integrity-checked
+  before every upload, plus one rotating backup per weekday. No quota; Actions minutes are free for
+  public repos.
+- **Size**: raw rows 8 days, article text 3 days (`nazariya/retain.py`), about 60 MB. The fact tables
+  the models read (event_facts, coverage, copies, title_edits) are kept indefinitely: on the order of
+  10 MB a month, so a year stays well inside a release asset's 2 GB limit.
+- **Home PC**: keeps its own SQLite file and hands new articles to the cloud as an encrypted
+  `home_inbox` asset (`nazariya/inbox.py`); only one writer ever touches the main state.
+
+## Analysis (revised 2026-11-23)
+The site is a set of models of how outlets work, computed every run from the fact tables
+(`nazariya/analytics/`): under-covered events, outlet map (correspondence analysis), lead-lag,
+selection model (logistic regression on first-report features), attention model (Poisson on population
+and distance from Delhi), story half-life (Kaplan-Meier), wire dependence, outlet-to-outlet copying,
+headline edits, and English-Hindi drift. Framing and stance stay as inputs, not as the product.
 
 ## Risks
 Scraper breakage & IP blocks · feed outages → false blindspots · paywalls (never bypass) ·
