@@ -94,3 +94,12 @@ def test_title_from_url():
     ) == "Teenager held on charge of raping minor in west champaran"
     assert title_from_url("https://x.com/news/123456.cms") == ""
     assert title_from_url("https://x.com/india/pm-visits-kerala-1234567.html") == "Pm visits kerala"
+
+
+def test_agency_from_author():
+    from nazariya.textutil import agency_from_author
+    assert agency_from_author("PTI") == "PTI"
+    assert agency_from_author("Edited by Riya; ANI") == "ANI"
+    assert agency_from_author("आईएएनएस") == "IANS"
+    assert agency_from_author("Anirudh Sharma") is None  # "ani" inside a name is not ANI
+    assert agency_from_author(None) is None

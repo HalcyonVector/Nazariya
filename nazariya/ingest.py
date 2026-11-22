@@ -38,7 +38,7 @@ from .db import (
 from .net import Fetcher, make_client, user_agent_for
 from .sources import Item, fetch_source
 from .textutil import (
-    canonical_url, detect_agency, detect_lang, fix_published, hamming, in_scope, path_segments,
+    agency_from_author, canonical_url, detect_agency, detect_lang, fix_published, hamming, in_scope, path_segments,
     rewrite_host, section_of, simhash, title_from_url, to_signed64, to_unsigned64,
 )
 
@@ -226,7 +226,7 @@ class Ingester:
             access="full" if len(text) >= FULL_TEXT_CHARS else "lede_only",
             lang=detect_lang(f"{title} {text[:1000]}", default=o["lang"]),
             simhash=to_signed64(h),
-            agency=detect_agency(text),
+            agency=detect_agency(text) or agency_from_author(getattr(doc, "author", None)),
         )
         same, other = self.near_duplicates(h, o["id"])
         if same is not None:

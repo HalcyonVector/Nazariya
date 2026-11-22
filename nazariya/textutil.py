@@ -156,6 +156,15 @@ AGENCY_PATTERNS = [
 SYNDICATED_NOTE = re.compile(r"(auto-generated from a syndicated feed|published from a wire agency feed)", re.IGNORECASE)
 
 
+_AUTHOR_AGENCY = re.compile(r"(?<![\w])(" + _AG + r")(?![\w])", re.IGNORECASE)
+
+
+def agency_from_author(author: str | None) -> str | None:
+    """Agency named in the page's byline metadata, e.g. author "PTI" or "Edited by X; ANI"."""
+    m = _AUTHOR_AGENCY.search(author or "")
+    return AGENCY_NAMES[m.group(1).lower()] if m else None
+
+
 def detect_agency(text: str) -> str | None:
     """Wire-agency byline in the opening or closing lines, e.g. PTI/ANI/IANS (incl. Hindi forms)."""
     head, tail = text[:300], text[-300:]
