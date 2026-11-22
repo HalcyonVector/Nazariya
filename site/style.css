@@ -206,3 +206,77 @@ details.more summary { cursor: pointer; font-size: 13px; font-weight: 600; displ
   .crow { grid-template-columns: 1fr 18px 1fr; } .crow .n { grid-column: 1 / -1; text-align: left; }
   .tile { padding: 2px; font-size: 8px; } .tile .v { font-size: 10px; }
 }
+
+/* ================= funk layer ================= */
+@keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes wiggle { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* findings ticker */
+.ticker { display: flex; align-items: stretch; border-bottom: 2px solid var(--ink); background: var(--ink); color: var(--paper); overflow: hidden; }
+.ticker-label { flex: none; background: var(--pink); color: var(--ink); font-weight: 800; text-transform: uppercase; letter-spacing: .1em; font-size: 12px; padding: 8px 14px; display: flex; align-items: center; }
+.ticker-track { overflow: hidden; flex: 1; }
+.ticker-run { display: inline-flex; white-space: nowrap; animation: scroll 70s linear infinite; padding: 8px 0; }
+.ticker:hover .ticker-run { animation-play-state: paused; }
+.ticker-run span { font-family: var(--display); font-size: 15px; padding: 0 28px; position: relative; }
+.ticker-run span::after { content: "\2726"; position: absolute; right: -6px; color: var(--yellow); }
+
+/* sticker on the lead story */
+.s-lead { position: relative; }
+.sticker { position: absolute; top: 6px; right: 0; width: 96px; height: 96px; display: grid; place-items: center; z-index: 2;
+  background: var(--yellow); border: 0; transform: rotate(12deg);
+  clip-path: polygon(50% 0, 61% 14%, 79% 7%, 82% 25%, 100% 30%, 90% 46%, 100% 62%, 82% 68%, 80% 87%, 62% 81%, 50% 100%, 38% 81%, 20% 87%, 18% 68%, 0 62%, 10% 46%, 0 30%, 18% 25%, 21% 7%, 39% 14%); }
+.sticker span { text-align: center; font-family: var(--display); font-weight: 900; font-size: 14px; line-height: 1; text-transform: uppercase; }
+.sticker b { font-size: 19px; color: var(--pink); -webkit-text-stroke: .6px var(--ink); }
+.s-lead .hed { padding-right: 100px; }
+
+/* kickers as tilted labels with an offset print shadow */
+.kicker { transform: rotate(-2deg); box-shadow: 3px 3px 0 var(--ink); border: 1.5px solid var(--ink); }
+.story:nth-child(even) .kicker { transform: rotate(1.5deg); }
+.story:hover .kicker { animation: wiggle .5s ease-in-out 2; }
+
+/* headline highlight: colour per ink, with a wavy underline */
+.hed em { background: none; text-decoration: underline wavy var(--pink); text-decoration-thickness: 3px; text-underline-offset: 6px; text-decoration-skip-ink: none; }
+.s-first .hed em, .s-life .hed em { text-decoration-color: var(--blue); }
+.s-atlas .hed em, .s-trans .hed em { text-decoration-color: var(--green); }
+.s-lead .hed em { text-decoration: none; background: var(--yellow); padding: 0 .12em; box-shadow: 4px 4px 0 var(--pink); display: inline-block; transform: rotate(-2deg); }
+
+/* coloured halftone panels for a few stories */
+.s-brief { background: radial-gradient(rgba(255,72,176,.22) 1.4px, transparent 1.6px) 0 0 / 10px 10px, rgba(255,232,0,.16); padding-left: 22px !important; padding-right: 18px !important; }
+.s-copy { background: radial-gradient(rgba(255,72,176,.16) 1.3px, transparent 1.5px) 0 0 / 9px 9px; }
+.s-trans { background: radial-gradient(rgba(0,120,191,.14) 1.3px, transparent 1.5px) 0 0 / 9px 9px; padding-left: 22px !important; padding-right: 18px !important; }
+
+/* file cards: tilted, with a coloured offset */
+.file { transform: rotate(.8deg); box-shadow: 6px 6px 0 var(--pink); }
+#detail.file { transform: rotate(-.8deg); box-shadow: 6px 6px 0 var(--green); }
+#editrate.file { box-shadow: 6px 6px 0 var(--blue); }
+.file::before { background: var(--pink); color: var(--ink); border: 1.5px solid var(--ink); }
+
+/* score badges on the lead story */
+.item .score b { display: inline-block; transform: rotate(-3deg); border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+.item:nth-child(3n+2) .score b { background: var(--yellow); }
+.item:nth-child(3n) .score b { background: var(--green); color: #fff; }
+
+/* playful hovers */
+.tile:hover { transform: translate(-2px, -2px) rotate(-3deg); }
+.brief li:hover::before { animation: spin 1s linear; }
+.outlet:hover circle.pt { fill-opacity: 1; }
+.tabs .pill.on { box-shadow: 3px 3px 0 var(--pink); }
+
+/* footer bottom bar: one line, close together */
+.bottom { justify-content: center; gap: 12px; align-items: center; }
+.bottom i { font-style: normal; color: var(--pink); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-run { animation: none; }
+  .story:hover .kicker, .brief li:hover::before { animation: none; }
+}
+@media (max-width: 600px) {
+  .sticker { width: 70px; height: 70px; top: 0; }
+  .sticker span { font-size: 11px; } .sticker b { font-size: 14px; }
+  .s-lead .hed { padding-right: 70px; }
+  .s-brief, .s-trans { padding-left: 14px !important; padding-right: 14px !important; }
+}
+@media (max-width: 980px) {
+  .page > .s-brief, .page > .s-trans { padding-left: 16px !important; padding-right: 16px !important; }
+}

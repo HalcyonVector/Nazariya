@@ -44,6 +44,9 @@ function header() {
   ].map(([n, l]) => `<span><b>${n}</b>${l}</span>`).join("");
   $("generated").textContent = `Models updated ${ago(A.generated_at)}, from events since ${since.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} (rolling ${Math.round(A.window_days)}-day window).`;
   const anchor = { selection: "lead", attention: "atlas", half_life: "life", lead_lag: "first", headline_edits: "edits", wire: "wire" };
+  const tick = A.findings.map((f) => `<span>${esc(f.text)}</span>`).join("");
+  if (tick) $("ticker").innerHTML = tick + tick;  // doubled so the loop is seamless
+  else $("ticker").closest(".ticker").remove();
   $("findings").innerHTML = A.findings.length
     ? A.findings.map((f) => `<li><a href="#${anchor[f.section] || f.section}">${esc(f.text)}</a></li>`).join("")
     : `<li>Findings appear once the models have enough events.</li>`;
@@ -325,6 +328,6 @@ function translation() {
   const T = A.translation, el = $("transbox");
   if (!T.ready) return pending(el, T);
   el.innerHTML = `<p class="small muted" style="margin-top:0">${T.events.toLocaleString()} stories covered in both languages. Median distance ${T.median.toFixed(3)}.</p>` +
-    T.top.slice(0, 8).map((e) => `<div class="titem"><div class="t">${esc(e.title)}</div>
+    T.top.slice(0, 5).map((e) => `<div class="titem"><div class="t">${esc(e.title)}</div>
       <div class="m"><b>${e.drift.toFixed(3)}</b>, further apart than ${e.percentile}% of stories &middot; ${e.en} English, ${e.hi} Hindi outlets</div></div>`).join("");
 }
