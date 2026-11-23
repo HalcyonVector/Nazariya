@@ -82,7 +82,9 @@ def load(engine: Engine, days: float = 28, now: datetime | None = None) -> Facts
                                              .order_by(title_edits.c.seen_at.desc())).mappings()]
     from ..ingest import _norm_title
     # edits stored before punctuation-only differences were ignored (e.g. "News" -> "News:")
-    eds = [e for e in eds if _norm_title(e["old_title"]) != _norm_title(e["new_title"])]
+    from ..textutil import is_live_page
+    eds = [e for e in eds if _norm_title(e["old_title"]) != _norm_title(e["new_title"])
+           and not is_live_page(e["url"], e["old_title"], e["new_title"])]  # live blogs change by design
     for e in eds:
         e["seen_at"], e["published_at"] = as_utc(e["seen_at"]), as_utc(e["published_at"])
     with engine.connect() as conn:

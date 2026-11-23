@@ -307,11 +307,13 @@ function edits() {
   const E = A.headline_edits;
   if (!E.ready) { pending($("editlist"), null, "No changed headlines yet. The log starts with the scheduled runs."); $("editrate").remove(); return; }
   hed("hed-edits", `<em>${E.total.toLocaleString()}</em> headlines changed after publishing`);
+  const kc = E.kinds || {};
   $("editlist").innerHTML = E.recent.slice(0, 20).map((e) => `
     <div class="edit"><div class="o"><a class="tag" href="${outletHref(e.outlet_id)}" style="background:${gcol(e.outlet_id)};color:#fff">${esc(e.outlet)}</a>
-      ${e.minutes_after != null ? ` changed within ${e.minutes_after < 120 ? e.minutes_after + " min" : Math.round(e.minutes_after / 60) + " h"} of publishing` : ""} &middot; ${extLink(e.url, "read the article")}</div>
+      <span class="kind k-${(e.kind || "").split(" ")[0]}">${esc(e.kind || "")}</span>${e.minutes_after != null ? ` changed within ${e.minutes_after < 120 ? e.minutes_after + " min" : Math.round(e.minutes_after / 60) + " h"} of publishing` : ""} &middot; ${extLink(e.url, "read the article")}</div>
       <div class="h">${diffWords(e.old, e.new)}</div></div>`).join("");
-  $("editrate").innerHTML = `<h5 style="margin-top:4px">Per 1,000 articles</h5>` + E.by_outlet.slice(0, 15).map((r) =>
+  $("editrate").innerHTML = `<h5 style="margin-top:4px">What changed</h5>` + ["numbers changed", "small correction", "added detail", "rewritten"].map((k) =>
+      `<div class="nb"><span>${k}</span><span>${kc[k] || 0}</span></div>`).join("") + `<p class="small muted">Live blogs and rolling update pages are left out: they change their headline by design.</p><h5>Per 1,000 articles</h5>` + E.by_outlet.slice(0, 15).map((r) =>
     `<div class="nb"><a href="${outletHref(r.id)}">${esc(r.name)}</a><span>${r.per_1000 ?? "n/a"} (${r.edits})</span></div>`).join("");
 }
 

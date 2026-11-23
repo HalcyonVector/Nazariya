@@ -39,7 +39,7 @@ from .db import (
 from .net import Fetcher, make_client, user_agent_for
 from .sources import Item, fetch_source
 from .textutil import (
-    agency_from_author, canonical_url, detect_agency, detect_lang, fix_published, hamming, in_scope, path_segments,
+    agency_from_author, canonical_url, is_live_page, detect_agency, detect_lang, fix_published, hamming, in_scope, path_segments,
     rewrite_host, section_of, simhash, title_from_url, to_signed64, to_unsigned64,
 )
 
@@ -338,6 +338,8 @@ def headline_edits(known: dict[str, tuple], feed_titles: dict[str, tuple[str, st
         if old_kind is not None and old_kind != kind:
             continue
         if not old or old == title_from_url(url) or _norm_title(old) == _norm_title(new):
+            continue
+        if is_live_page(url, old, new):
             continue
         out.append({"article_id": aid, "outlet_id": outlet_id, "url": url, "old_title": old,
                     "new_title": new, "published_at": published, "seen_at": now})

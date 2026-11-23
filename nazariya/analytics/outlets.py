@@ -354,6 +354,8 @@ def removed_stories(f: Facts) -> dict:
 NAMED_TOP = 8           # most-named people and parties compared
 NAMED_MIN_EXPECTED = 5  # a cell is shown only if the peers' rate predicts 5+ mentions
 NAMED_FDR = 0.05        # false-discovery rate across all cells (Benjamini-Hochberg)
+# languages whose people and parties the entity linker knows; others would look as if they named nobody
+NAMED_LANGS = {"en", "hi"}
 
 
 def _slug_headlines(f: Facts) -> set[str]:
@@ -387,7 +389,7 @@ def who_named(f: Facts) -> dict:
         if e["n_news_outlets"] < MIN_EVENT_OUTLETS:
             continue
         for o, c in f.cov[eid].items():
-            if o not in slug and c.get("names") is not None:
+            if o not in slug and c.get("names") is not None and f.outlets[o].lang in NAMED_LANGS:
                 by_event[eid].append((o, set(c["names"])))
     by_event = {k: v for k, v in by_event.items() if len(v) >= 2}
     count = Counter(q for v in by_event.values() for _, ns in v for q in ns)
@@ -527,9 +529,12 @@ def headline_edits(f: Facts, limit: int = 60) -> dict:
     per = Counter(e["outlet_id"] for e in f.edits if e["outlet_id"] in f.outlets)
     rate = [{"id": o, "name": f.outlets[o].name, "edits": n, "articles": vol[o],
              "per_1000": round(1000 * n / vol[o], 1) if vol[o] else None} for o, n in per.most_common()]
+    from ..textutil import edit_kind
+    kinds = Counter(edit_kind(e["old_title"], e["new_title"]) for e in f.edits if e["outlet_id"] in f.outlets)
     recent = [{"outlet": f.outlets[e["outlet_id"]].name, "outlet_id": e["outlet_id"], "url": e["url"],
+               "kind": edit_kind(e["old_title"], e["new_title"]),
                "old": e["old_title"], "new": e["new_title"], "seen_at": e["seen_at"].isoformat(),
                "minutes_after": round((e["seen_at"] - e["published_at"]).total_seconds() / 60)
                if e["published_at"] else None}
               for e in f.edits if e["outlet_id"] in f.outlets][:limit]
-    return {"ready": bool(recent), "total": len(f.edits), "by_outlet": rate, "recent": recent}
+    return {"ready": bool(recent), "total": len(f.edits), "kinds": dict(kinds), "by_outlet": rate, "recent": recent}

@@ -105,6 +105,17 @@ def test_agency_from_author():
     assert agency_from_author(None) is None
 
 
+def test_live_pages_and_edit_kinds():
+    from nazariya.textutil import edit_kind, is_live_page
+    assert is_live_page("https://x.com/news/balen-shah-live-updates-1", "Balen Shah Live Updates: day 2")
+    assert is_live_page("https://x.com/a/1", "न्यूज अपडेट्स सुबह की बड़ी खबरें")
+    assert not is_live_page("https://x.com/delhi/olive-oil-prices-1", "Olive oil prices rise")
+    assert edit_kind("Fire kills 3 in factory", "Fire kills 24 in factory") == "numbers changed"
+    assert edit_kind("ಸ್ಟೀಕರ್ ಕಚೇರಿಗೆ ಬಂದು ರಾಜೀನಾಮೆ ಪತ್ರ ಸಲ್ಲಿಸಿದ", "ಸ್ಪೀಕರ್ ಕಚೇರಿಗೆ ಬಂದು ರಾಜೀನಾಮೆ ಪತ್ರ ಸಲ್ಲಿಸಿದ") == "small correction"
+    assert edit_kind("Minister resigns over scam", "Opposition demands probe into land deal") == "rewritten"
+    assert edit_kind("Youth dies in Mussoorie crash, police probe on", "Youth dies in Mussoorie crash, police probe on after family protest") == "added detail"
+
+
 def test_marathi_keeps_its_language():
     from nazariya.textutil import detect_lang
     assert detect_lang("महाराष्ट्रात मुसळधार पाऊस", default="mr") == "mr"

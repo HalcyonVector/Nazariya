@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from collections import Counter
 from datetime import datetime, timedelta
@@ -191,3 +192,31 @@ def fix_published(dt: datetime | None, now: datetime) -> tuple[datetime | None, 
         return dt, False
     shifted = dt - IST_OFFSET
     return (shifted if shifted <= now + FUTURE_TOLERANCE else now), True
+
+
+LIVE_PAGE = re.compile(r"\blive\b|live[- ]updates|लाइव|अपडेट्स|news updates|ತಾಜಾ ಸುದ್ದಿ", re.IGNORECASE)
+
+
+def is_live_page(url: str, *titles: str) -> bool:
+    """Live blogs and rolling update pages change their headline by design; they are not edits."""
+    return bool(re.search(r"(^|[/_-])live([/_-]|$)", urlsplit(url).path.lower())) or any(
+        LIVE_PAGE.search(t or "") for t in titles)
+
+
+_NUMS = re.compile(r"\d[\d,.]*")
+
+
+def edit_kind(old: str, new: str) -> str:
+    """'numbers changed' when the figures differ (a toll, a sum, a count); 'small correction' for a
+    few changed characters (a typo, a spelling); 'added detail' when the old headline still opens the
+    new, longer one; otherwise 'rewritten'."""
+    import difflib
+    if sorted(_NUMS.findall(old)) != sorted(_NUMS.findall(new)) and _NUMS.findall(old) and _NUMS.findall(new):
+        return "numbers changed"
+    if difflib.SequenceMatcher(None, old, new).ratio() >= 0.93:
+        return "small correction"
+    # the old headline survives at the start of the new one, which goes on: detail was added
+    head = len(os.path.commonprefix([old.rstrip(" .…,"), new]))
+    if len(new) > len(old) and head >= 0.6 * len(old.rstrip(" .…,")):
+        return "added detail"
+    return "rewritten"

@@ -396,3 +396,6 @@ table.agenda td { min-width: 40px; }
 @media (max-width: 980px) { .s-bridge, .s-agenda { grid-column: 1 / -1; } }
 
 .clearrow .bar { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+.kind { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 0 6px; margin: 0 4px; border: 1px solid var(--ink); }
+.kind.k-numbers { background: var(--pink); } .kind.k-small { background: var(--yellow); } .kind.k-rewritten { background: var(--paper); } .kind.k-added { background: var(--green); color: #fff; }
