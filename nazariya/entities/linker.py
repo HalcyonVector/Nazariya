@@ -130,18 +130,23 @@ class Linker:
         self.stems: dict[str, set[str]] = defaultdict(set)
         if not regional:
             return
-        states = (yaml.safe_load(regional) or {}).get("states", {})
-        for qid, langs in states.items():
-            if qid not in self.entities:
-                continue
-            for names in langs.values():
-                for name in names:
-                    key = tuple(normalise(t) for t in tokenize(name))
-                    if not key or len("".join(key)) <= 3:
-                        continue
-                    self.index[key].add(Entry(qid, False))
-                    if len(key) == 1 and not key[0].isascii() and len(key[0]) - 1 >= REGIONAL_MIN_STEM:
-                        self.stems[key[0][:-1]].add(qid)
+        data = yaml.safe_load(regional) or {}
+        # states and parties: every name, and stems of one-word names; people: full (multi-word) names
+        # only, because a lone given name in these languages is too ambiguous to link
+        for kind in ("states", "parties", "people"):
+            for qid, langs in (data.get(kind) or {}).items():
+                if qid not in self.entities:
+                    continue
+                for names in langs.values():
+                    for name in names:
+                        key = tuple(normalise(t) for t in tokenize(PAREN.sub("", name)))
+                        if not key or len("".join(key)) <= 3 or len(key) > MAX_ALIAS_TOKENS:
+                            continue
+                        if kind == "people" and len(key) < 2:
+                            continue
+                        self.index[key].add(Entry(qid, False))
+                        if kind != "people" and len(key) == 1 and not key[0].isascii() and len(key[0]) - 1 >= REGIONAL_MIN_STEM:
+                            self.stems[key[0][:-1]].add(qid)
         self.stem_lengths = sorted({len(k) for k in self.stems}, reverse=True)
 
     def _stem_hit(self, token: str) -> set[str] | None:

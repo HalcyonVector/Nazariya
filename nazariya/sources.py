@@ -90,6 +90,21 @@ def parse_feed(content: bytes, kind: str) -> list[Item]:
     return items
 
 
+IMAGE_NAME = re.compile(r"\.(jpe?g|png|webp|gif|avif)\s*$", re.I)
+
+
+def sitemap_title(u: etree._Element) -> str:
+    """The news headline of a sitemap entry: <news:title> first, else any <title> that is not an
+    image's (image sitemaps attach titles to pictures, often just the file name)."""
+    news = u.find(".//{*}news/{*}title")
+    cands = [news] if news is not None else [t for t in u.iter("{*}title") if etree.QName(t.getparent()).localname != "image"]
+    for t in cands:
+        text = clean_text(t.text or "", 1000)
+        if text and not IMAGE_NAME.search(text):
+            return text
+    return ""
+
+
 def parse_sitemap_urls(root: etree._Element) -> list[Item]:
     items = []
     for u in root.iter("{*}url"):
@@ -98,12 +113,11 @@ def parse_sitemap_urls(root: etree._Element) -> list[Item]:
             continue
         pub = u.find(".//{*}publication_date")
         lastmod = u.find("{*}lastmod")
-        title = u.find(".//{*}title")
         stamp = pub.text if pub is not None else (lastmod.text if lastmod is not None else None)
         items.append(
             Item(
                 url=loc.text.strip(),
-                title=clean_text(title.text if title is not None else "", 1000),
+                title=sitemap_title(u),
                 published=parse_datetime(stamp),
             )
         )

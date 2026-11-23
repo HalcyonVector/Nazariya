@@ -121,3 +121,15 @@ def test_marathi_keeps_its_language():
     assert detect_lang("महाराष्ट्रात मुसळधार पाऊस", default="mr") == "mr"
     assert detect_lang("महाराष्ट्र में भारी बारिश", default="hi") == "hi"
     assert detect_lang("தமிழ்நாட்டில் கனமழை", default="ta") == "ta"
+
+
+def test_sitemap_title_skips_image_titles():
+    from lxml import etree
+    from nazariya.sources import parse_sitemap_urls
+    xml = b"""<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+      <url><loc>https://x.com/a</loc><image:image><image:title>epf illustration.jpg</image:title></image:image>
+        <news:news><news:title>EPF hike demand grows</news:title></news:news></url>
+      <url><loc>https://x.com/b</loc><image:image><image:title>p jayarajan (1).jpg</image:title></image:image></url>
+    </urlset>"""
+    items = parse_sitemap_urls(etree.fromstring(xml))
+    assert [i.title for i in items] == ["EPF hike demand grows", ""]   # b falls back to the page title
