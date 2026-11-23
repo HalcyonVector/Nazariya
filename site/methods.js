@@ -47,7 +47,7 @@ const M = [
      <p><b>Language bridges.</b> For events 3+ outlets covered: the language group of the first report, and for each other group the first outlet to carry it and the delay.</p>
      <p><b>Agenda fingerprints.</b> Each outlet's share of stories in each frame against the share across all outlets, with 95% Wilson intervals.</p>`],
   ["labels", "Labels and what is provisional", "",
-    `<p>The clustering, entity-linking and frame figures are measured against labels written by large language models (one main model, a second as a check), with a small number of human labels. They are marked provisional. One human labelling session is planned: yes/no questions on the pairs where the two models disagree, plus a random sample where they agree, to estimate their error rate. Every evaluation reruns unchanged once those labels exist.</p>`],
+    `<p>The clustering, entity-linking and frame figures are measured against labels written by large language models (one main model, a second as a check), with a small number of human labels. They are marked provisional. A human labelling session checks the live pipeline directly: 130 yes/no questions on pairs the clustering joined, look-alikes it kept apart, and names the linker found in headlines. Its results replace the provisional clustering and linking figures once answered.</p>`],
 ];
 
 getJSON("data/analysis.json").catch(() => null).then((A) => {

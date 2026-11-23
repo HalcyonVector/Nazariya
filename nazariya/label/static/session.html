@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nazariya labelling session</title>
+<style>
+  :root { --paper: #f3eddf; --ink: #1d1d1b; --mute: #78736a; --pink: #ff48b0; --blue: #0078bf; --green: #00a95c; --yellow: #ffe800; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9e1cf; color: var(--ink); font: 16px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .page { max-width: 920px; margin: 0 auto; background: var(--paper); min-height: 100vh; padding: 26px 30px 40px; }
+  h1 { font-family: Georgia, serif; font-weight: 900; font-size: 30px; margin: 0; }
+  .bar { height: 10px; border: 1.5px solid var(--ink); margin: 14px 0 4px; } .bar i { display: block; height: 100%; background: var(--pink); }
+  .meta { font-size: 13px; color: var(--mute); }
+  .kind { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; padding: 3px 8px; background: var(--yellow); border: 1.5px solid var(--ink); margin-top: 22px; }
+  .q { font-family: Georgia, serif; font-size: 22px; font-weight: 700; margin: 10px 0 16px; }
+  .docs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .doc { border: 2px solid var(--ink); background: #fffbe9; padding: 14px 16px; box-shadow: 4px 4px 0 var(--ink); }
+  .doc .o { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--blue); }
+  .doc .t { font-family: Georgia, serif; font-size: 19px; line-height: 1.35; margin: 6px 0; }
+  .doc a { font-size: 13px; }
+  .entity { border: 2px dashed var(--ink); padding: 12px 14px; margin-top: 14px; background: #fff; }
+  .entity b { font-size: 18px; }
+  .btns { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 700; font-size: 17px; padding: 12px 22px; border: 2px solid var(--ink); cursor: pointer; box-shadow: 4px 4px 0 var(--ink); }
+  button.y { background: var(--green); color: #fff; } button.n { background: var(--pink); } button.u { background: #fff; }
+  button.nav { background: var(--paper); box-shadow: none; font-size: 14px; padding: 8px 14px; }
+  button.chosen { outline: 4px solid var(--blue); }
+  .hint { font-size: 13px; color: var(--mute); margin-top: 10px; }
+  .done { font-family: Georgia, serif; font-size: 24px; margin-top: 40px; }
+  @media (max-width: 700px) { .docs { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Labelling session</h1>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="meta" id="meta">Loading</div>
+  <div id="card"></div>
+</div>
+<script>
+"use strict";
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safe = (u) => (/^https?:\/\//i.test(u || "") ? u : "#");
+let Q = [], A = {}, i = 0;
+const LANG = { en: "English", hi: "Hindi", ta: "Tamil", bn: "Bengali", mr: "Marathi", ml: "Malayalam", te: "Telugu", kn: "Kannada" };
+const doc = (d) => `<div class="doc"><div class="o">${esc(d.outlet)} &middot; ${esc(LANG[d.lang] || d.lang)}</div>
+  <div class="t">${esc(d.title)}</div><a href="${esc(safe(d.url))}" target="_blank" rel="noopener">open the article</a>
+  <span class="meta"> &middot; ${d.published_at ? new Date(d.published_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : ""}</span></div>`;
+
+function show() {
+  const n = Object.keys(A).length;
+  document.getElementById("bar").style.width = `${100 * n / Q.length}%`;
+  document.getElementById("meta").textContent = `${n} of ${Q.length} answered. Question ${i + 1}.`;
+  if (i >= Q.length) {
+    document.getElementById("card").innerHTML = `<div class="done">All done. Run <code>python -m nazariya.label.session score</code> for the results.</div>`;
+    return;
+  }
+  const q = Q[i], cur = A[q.qid];
+  const body = q.kind === "pair"
+    ? `<span class="kind">Same event?</span><div class="q">Are these two articles about the same event (the same incident, announcement or decision)?</div><div class="docs">${doc(q.a)}${doc(q.b)}</div>
+       <div class="hint">Same topic is not enough: two different accidents, or two speeches by the same minister on different days, are different events.</div>`
+    : `<span class="kind">Right name?</span><div class="q">Does this headline refer to the ${esc(q.entity.type)} below?</div>${doc(q.a)}
+       <div class="entity"><b>${esc(q.entity.label)}</b><br><span class="meta">${esc(q.entity.description || "")}</span></div>`;
+  document.getElementById("card").innerHTML = body + `<div class="btns">
+    <button class="y${cur === "yes" ? " chosen" : ""}" data-a="yes">Yes (Y)</button><button class="n${cur === "no" ? " chosen" : ""}" data-a="no">No (N)</button>
+    <button class="u${cur === "unsure" ? " chosen" : ""}" data-a="unsure">Can't tell (U)</button>
+    <button class="nav" data-nav="-1">&larr; Back</button><button class="nav" data-nav="1">Skip &rarr;</button></div>`;
+  document.querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => answer(b.dataset.a)));
+  document.querySelectorAll("[data-nav]").forEach((b) => (b.onclick = () => { i = Math.max(0, i + Number(b.dataset.nav)); show(); }));
+}
+
+function answer(a) {
+  const q = Q[i];
+  fetch("/api/answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ qid: q.qid, answer: a }) })
+    .then((r) => { if (!r.ok) throw new Error("not saved"); A[q.qid] = a; i++; show(); })
+    .catch((e) => alert("Could not save the answer: " + e.message));
+}
+
+document.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (k === "y") answer("yes"); else if (k === "n") answer("no"); else if (k === "u") answer("unsure");
+  else if (k === "arrowleft") { i = Math.max(0, i - 1); show(); } else if (k === "arrowright") { i++; show(); }
+});
+
+fetch("/api/session").then((r) => r.json()).then((d) => {
+  Q = d.questions; A = d.answers;
+  i = Q.findIndex((q) => !(q.qid in A)); if (i < 0) i = Q.length;
+  show();
+});
+</script>
+</body>
+</html>

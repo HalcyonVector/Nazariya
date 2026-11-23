@@ -291,7 +291,7 @@ pytest -q
 - **Agency copy is under-counted** where outlets credit agencies only in places the extractor does not see.
 - **"Who gets named" reads headlines only.** It measures what an outlet chose to put in its headlines, which is the most visible choice but not the whole article; the Times of India is left out because its feed gives headlines rebuilt from web addresses.
 - **Entity coverage is uneven.** People and parties are linked in English and Hindi only; regional-language outlets are linked for states, with inflected forms matched by stem, which misses some forms.
-- **Provisional accuracy figures.** Clustering, linking and the frame classifier are evaluated against LLM silver labels; one human labelling session at the end is planned to replace them.
+- **Provisional accuracy figures.** Clustering, linking and the frame classifier are evaluated against LLM silver labels. A human labelling session is ready (`python -m nazariya.label.session serve`): 130 yes/no checks of what the live pipeline decided, 40 joined pairs, 40 look-alikes kept apart and 50 headline links, scored into `reports/session_v2.md`.
 - **Ownership is as Wikipedia states it**, read on 23 November 2026, and ownership changes. One outlet has no owner listed, and the overlap between sister outlets can come from shared newsrooms or content sharing; the data shows the overlap, not its cause.
 - **Five outlets depend on a home PC** because they block datacenter IPs; when that machine is off, they show as "no data", never as "did not cover".
 
@@ -299,7 +299,7 @@ pytest -q
 
 ## Suggested Future Features
 
-- **A human-labelled gold set** to replace the silver labels behind the clustering, linking and framing figures.
+- **A human-labelled frame set**, so the frame classifier is measured against people, not only LLM labels.
 - **People and parties in regional languages**, not just states.
 - **Story arcs:** link events about the same named case across weeks, to follow a story from first report to verdict.
 - **A feed of weekly editions** so each new issue can be followed.

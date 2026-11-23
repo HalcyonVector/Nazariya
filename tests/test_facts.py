@@ -259,3 +259,21 @@ def test_breakout_forecast_learns_early_pickup():
                        "n_news_outlets": len(members), "first_report": {"lang": "en"}}
     res = forecast.run(Facts(now, NOW, outs, events, cov))
     assert res["ready"] and res["score"]["auc"] > 0.8
+
+
+def test_labelling_session_scores(tmp_path, monkeypatch):
+    import json
+    from nazariya.label import session
+    qs = [{"qid": "s2-001", "kind": "pair", "predicted": True}, {"qid": "s2-002", "kind": "pair", "predicted": True},
+          {"qid": "s2-003", "kind": "pair", "predicted": False}, {"qid": "s2-004", "kind": "link", "predicted": True}]
+    ans = [{"qid": "s2-001", "answer": "no"}, {"qid": "s2-001", "answer": "yes"},  # latest answer wins
+           {"qid": "s2-002", "answer": "no"}, {"qid": "s2-003", "answer": "unsure"}, {"qid": "s2-004", "answer": "yes"}]
+    (tmp_path / "q.jsonl").write_text("".join(json.dumps(q) + "\n" for q in qs), encoding="utf-8")
+    (tmp_path / "a.jsonl").write_text("".join(json.dumps(a) + "\n" for a in ans), encoding="utf-8")
+    monkeypatch.setattr(session, "QUESTIONS", tmp_path / "q.jsonl")
+    monkeypatch.setattr(session, "ANSWERS", tmp_path / "a.jsonl")
+    monkeypatch.setattr(session, "REPORT", tmp_path / "r.md")
+    out = session.score()
+    assert "4 of 4 questions answered (1 marked can't tell)" in out
+    assert "| 0.500 (95% CI" in out        # clustering precision: 1 of 2
+    assert "n = 0" in out or "n/a" in out  # look-alikes: only an unsure answer
