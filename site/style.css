@@ -408,3 +408,25 @@ table.agenda td { min-width: 40px; }
 .methods p { font-size: 15.5px; line-height: 1.65; margin: 0 0 12px; }
 .methods p b { font-weight: 700; }
 .methods section { scroll-margin-top: 16px; }
+
+/* ================= head to head ================= */
+.pickers { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.pickers select { font: inherit; font-size: 16px; font-weight: 600; padding: 8px 12px; border: 2px solid var(--ink); background: #fffbe9; box-shadow: 4px 4px 0 var(--ink); }
+.pickers .vs { font-family: var(--display); font-weight: 900; font-size: 26px; color: var(--pink); }
+.cmp { margin-top: 22px; max-width: 760px; }
+.cmp-head, .cmp-row { display: grid; grid-template-columns: 1fr 1.2fr 1fr; align-items: center; text-align: center; gap: 10px; }
+.cmp-head a { color: #fff; font-weight: 800; text-decoration: none; padding: 6px 10px; border: 1.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.cmp-row { padding: 8px 0; border-bottom: 1px dashed var(--hair); }
+.cmp-row b { font-family: var(--display); font-weight: 800; font-size: 20px; }
+.cmp-row span { font-size: 12px; color: var(--mute); text-transform: uppercase; letter-spacing: .05em; }
+.venn { display: flex; gap: 0; margin: 26px 0 8px; max-width: 760px; }
+.venn span { flex: 1; text-align: center; padding: 14px 6px; font-family: var(--display); font-weight: 900; font-size: 34px; color: #fff; border: 2px solid var(--ink); }
+.venn .v-both { background: var(--ink); }
+.venn small { display: block; font-family: var(--sans); font-size: 12px; font-weight: 600; }
+.cmp-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+.pair { padding: 12px 0; border-bottom: 1px dashed var(--hair); }
+.pair-t { font-weight: 700; font-size: 14px; } .pair-t a { text-decoration: none; } .pair-t small { display: block; font-weight: 500; color: var(--mute); }
+.pair-h { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+.pair-h div { font-family: var(--display); font-size: 16px; line-height: 1.35; border-left: 5px solid; padding-left: 10px; }
+.pair-h a { text-decoration: none; } .pair-h a:hover { text-decoration: underline; }
+@media (max-width: 760px) { .cmp-lists, .pair-h { grid-template-columns: 1fr; } }

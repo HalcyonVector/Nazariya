@@ -228,6 +228,9 @@ def dossiers(engine: Engine, f: Facts, result: dict) -> dict:
             "copies_from": [{"id": s, "name": f.outlets[s].name, "n": c} for s, c in copy_in[o].most_common(6) if s in f.outlets],
             "copied_by": [{"id": t, "name": f.outlets[t].name, "n": c} for t, c in copy_out[o].most_common(6) if t in f.outlets],
             "edits": edits_by[o][:15], "n_edits": len(edits_by[o]),
+            # stories 3+ outlets covered that this one ran: for the head-to-head comparison
+            "coverage": [[eid, _iso(f.cov[eid][o]["first_at"]), f.cov[eid][o].get("first_title"), f.cov[eid][o].get("first_url")]
+                         for eid, e in f.events.items() if e["n_news_outlets"] >= STORY_MIN_OUTLETS and o in f.cov[eid]],
             "agenda": [{"frame": frame_labels[k], **v} for k, v in (agenda_rows.get(o, {}).get("frames") or {}).items()],
             "named": sorted(named_cells[o], key=lambda c: -abs(np.log(max(c["ratio"], 1e-3)))),
         }
