@@ -399,3 +399,12 @@ table.agenda td { min-width: 40px; }
 
 .kind { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 0 6px; margin: 0 4px; border: 1px solid var(--ink); }
 .kind.k-numbers { background: var(--pink); } .kind.k-small { background: var(--yellow); } .kind.k-rewritten { background: var(--paper); } .kind.k-added { background: var(--green); color: #fff; }
+
+/* ================= methods ================= */
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.toc a { font-size: 12px; text-decoration: none; border: 1.5px solid var(--ink); padding: 3px 9px; background: var(--paper); }
+.toc a:hover { background: var(--yellow); }
+.methods { max-width: 78ch; }
+.methods p { font-size: 15.5px; line-height: 1.65; margin: 0 0 12px; }
+.methods p b { font-weight: 700; }
+.methods section { scroll-margin-top: 16px; }

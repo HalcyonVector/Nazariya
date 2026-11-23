@@ -82,7 +82,7 @@ const FOOTER = `<footer class="colophon">
 function shell(kicker) {
   document.body.insertAdjacentHTML("afterbegin", `<div class="paper" id="paper">
     <header class="mast small">
-      <div class="edition"><a href="./">&larr; Front page</a><span class="ed-mid">${esc(kicker)}</span><a href="health.html" target="_blank" rel="noopener">Sources and feed status</a></div>
+      <div class="edition"><a href="./">&larr; Front page</a><span class="ed-mid">${esc(kicker)}</span><span><a href="methods.html">Methods</a> &middot; <a href="health.html" target="_blank" rel="noopener">Sources</a></span></div>
       <a class="nameplate-link" href="./"><h1 class="nameplate"><span>Nazariya</span></h1></a>
     </header>
     <main class="inside" id="inside"><p class="dek">Loading</p></main>
