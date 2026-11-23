@@ -1,0 +1,34 @@
+name: watchdog
+
+# GitHub sometimes delays or drops scheduled runs when it is busy (the 04:17 and 08:17 UTC runs of
+# 23 November 2026 never started). Every hour this checks whether the pipeline has started in the
+# last 4.5 hours and starts it if not. Each check takes a few seconds.
+
+on:
+  schedule:
+    - cron: "41 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Start the pipeline if it is overdue
+        run: |
+          set -euo pipefail
+          busy=$(gh run list --workflow ingest.yml --limit 5 --json status -q '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="waiting")] | length')
+          if [ "$busy" -gt 0 ]; then echo "pipeline running; nothing to do"; exit 0; fi
+          last=$(gh run list --workflow ingest.yml --limit 1 --json createdAt -q '.[0].createdAt')
+          age=$(( $(date -u +%s) - $(date -u -d "$last" +%s) ))
+          echo "last pipeline run started $((age / 60)) minutes ago"
+          if [ "$age" -gt $((270 * 60)) ]; then
+            gh workflow run ingest.yml
+            echo "::notice::pipeline was overdue; started it"
+          fi
