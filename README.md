@@ -87,6 +87,15 @@ Real problems found while building it, and what changed:
 - **Which of today's stories will spread:** from a story's first two hours (how many outlets and languages carry it, and how it broke: agency copy, a government release, a death toll, a politician, a Delhi dateline, the Northeast, its language and hour), a logistic model estimates the chance it reaches ten or more newsrooms.
 - **A published record:** the model is fitted on the older 70% of finished stories and scored on the newer 30%, so its AUC, hit rate among its top picks and calibration (predicted against observed) are what it would have achieved looking forward.
 
+### Who Gets Named
+
+- **Who each newsroom puts in its headlines:** for the most-named people and parties, how often an outlet's headlines name them against the other outlets' headlines on the same stories. Headlines, not article text, because every headline is readable while text is cut short for some outlets. Each cell is an exact binomial test against the peers' rate, with the false-discovery rate held at 5% across all cells, and needs at least five expected mentions. Outlets whose feeds give headlines rebuilt from web addresses (where "BJP" reads as "bjp") are left out.
+
+### Language Bridges and Agenda Fingerprints
+
+- **How stories cross languages:** for stories three or more outlets covered, the share that broke in one language (English, Hindi or a regional language) and were carried in another, how long that took, and which outlets were first to carry a story across.
+- **What each newsroom spends its coverage on:** each outlet's share of stories in each frame (crime, health, politics, the economy and so on) against the share across all outlets, with 95% intervals.
+
 ### Who Owns the News
 
 - **Ownership as cited data:** each outlet's owner is taken from its English Wikipedia infobox and stored with the article as its source.
@@ -95,8 +104,8 @@ Real problems found while building it, and what changed:
 ### Story Files, Outlet Files and Weekly Editions
 
 - **Story files:** one page per event three or more outlets covered: a timeline of who published when, every outlet's headline linked to its article, agency copy and headline edits marked, and the outlets the model expected that stayed silent.
-- **Outlet files:** one page per outlet: its position among its peers with a weekly trail, its publishing clock, the states it covers more and less than its peers, the big stories it skipped, the stories it broke, copying in both directions, its headline edits, and its owner with sister outlets.
-- **Weekly editions:** the first run each Monday freezes the front page as that week's numbered issue, readable for good from "Past issues".
+- **Outlet files:** one page per outlet: its position among its peers with a weekly trail, its publishing clock, the states it covers more and less than its peers, what it spends its coverage on, who it puts in its headlines, the big stories it skipped, the stories it broke, copying in both directions, its headline edits, and its owner with sister outlets.
+- **Weekly editions:** the first run each Monday freezes the front page as that week's numbered issue, readable for good from "Past issues" and followable through an [RSS feed](https://halcyonvector.github.io/Nazariya/data/feed.xml).
 - **Search:** every story three or more newsrooms covered, searchable by headline.
 
 ### UI: A Newspaper About Newspapers
@@ -124,8 +133,8 @@ Real problems found while building it, and what changed:
 
 1. **Discover:** each outlet's sources are read; items older than three days or outside the outlet's own domain are dropped; URLs are canonicalised.
 2. **Extract:** trafilatura pulls article text (newest first, a capped number per outlet per run); SimHash marks re-published duplicates and cross-outlet copies; agency bylines are read from the text and the page metadata.
-3. **Embed and cluster:** the headline plus the first ~200 words are embedded with BGE-M3; each article joins the nearest open event above a cosine threshold of 0.643, or starts a new one; events close after 72 hours without a new article.
-4. **Link:** a dictionary linker over a Wikidata alias table finds people, parties and states in English, Hindi and (for states) six more languages, including inflected forms.
+3. **Link entities:** a dictionary linker over a Wikidata alias table finds people, parties and states in English, Hindi and (for states) six more languages, including inflected forms.
+4. **Embed and cluster:** the headline plus the first ~200 words are embedded with BGE-M3; each article joins the nearest open event above a cosine threshold of 0.65, or starts a new one; events close after 72 hours without a new article. An article that names states, none of which the event names, joins only if it is nearly a duplicate (0.80), so look-alike stories in different states (road accidents, weather) stay apart.
 5. **Condense:** every recently active event becomes one `event_facts` row plus one `coverage` row per outlet; these are what the models read and they are never deleted.
 
 ---
@@ -253,6 +262,8 @@ Home PC, every 4 hours (5 outlets that block datacenter IPs)
 - **Bounded work per run.** Extraction is capped per outlet and embedding per run (newest first); any backlog carries over to the next run.
 - **One writer.** Only the cloud run writes the main state; the home PC hands over its articles through its own encrypted inbox file.
 - **New columns migrate themselves:** columns added to the schema later are added to the stored file on start.
+- **Runs that GitHub drops are restarted.** Scheduled runs are sometimes delayed or skipped when GitHub is busy, so an hourly watchdog starts the pipeline whenever more than 4.5 hours have passed since the last one.
+- **Design changes publish in a minute.** A push that changes only the site lays the new pages over the latest pipeline data and deploys, without waiting for the next run.
 
 ---
 
@@ -262,7 +273,7 @@ Home PC, every 4 hours (5 outlets that block datacenter IPs)
 pytest -q
 ```
 
-**Unit and integration tests (53):** fact condensation on a seeded event (first report, dateline-only Delhi mentions dropped, English-Hindi drift, agency copy, cross-outlet copies), the home-inbox round trip, schema migration, death-toll parsing in English and Hindi, headline-edit detection (slug titles and cosmetic changes ignored), ministry names, Kaplan-Meier and log-rank, correspondence analysis, Procrustes alignment of weekly positions, weekly editions freezing once per Monday, the ownership permutation test and the breakout forecast on planted data, removal detection (blocks are never removals), regional state names with case endings, Marathi language detection, agency bylines from metadata, retention and the clustering primitives.
+**Unit and integration tests (55):** fact condensation on a seeded event (first report, dateline-only Delhi mentions dropped, English-Hindi drift, agency copy, cross-outlet copies), the home-inbox round trip, schema migration, death-toll parsing in English and Hindi, headline-edit detection (slug titles and cosmetic changes ignored), ministry names, Kaplan-Meier and log-rank, correspondence analysis, Procrustes alignment of weekly positions, weekly editions freezing once per Monday, the ownership permutation test and the breakout forecast on planted data, the state rule in clustering, headline edits that differ only in punctuation or come from another feed, removal detection (blocks are never removals), regional state names with case endings, Marathi language detection, agency bylines from metadata, retention and the clustering primitives.
 
 **Evaluations (provisional: scored against LLM silver labels, a few human):**
 
@@ -278,6 +289,7 @@ pytest -q
 - **Clustering sometimes merges separate stories.** At the chosen threshold about one in eight same-event calls is wrong; a large merged event (several road accidents in different states, for example) inflates its outlet count and the states it names. Story pages show the first few states and the "largest toll in a headline" rather than claiming one.
 - **Feeds are a sample.** An outlet "skipping" a story means its feeds did not carry it. Amar Ujala's news sitemap holds about 1.6 hours of a very large output, so its local city stories are only partly captured even with its category feeds; national stories are covered.
 - **Agency copy is under-counted** where outlets credit agencies only in places the extractor does not see.
+- **"Who gets named" reads headlines only.** It measures what an outlet chose to put in its headlines, which is the most visible choice but not the whole article; the Times of India is left out because its feed gives headlines rebuilt from web addresses.
 - **Entity coverage is uneven.** People and parties are linked in English and Hindi only; regional-language outlets are linked for states, with inflected forms matched by stem, which misses some forms.
 - **Provisional accuracy figures.** Clustering, linking and the frame classifier are evaluated against LLM silver labels; one human labelling session at the end is planned to replace them.
 - **Ownership is as Wikipedia states it**, read on 23 November 2026, and ownership changes. One outlet has no owner listed, and the overlap between sister outlets can come from shared newsrooms or content sharing; the data shows the overlap, not its cause.

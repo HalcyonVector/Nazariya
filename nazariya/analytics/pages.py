@@ -154,6 +154,14 @@ def dossiers(engine: Engine, f: Facts, result: dict) -> dict:
             hist[r.outlet_id].append({"week": r.week, "x": round(r.x, 4), "y": round(r.y, 4)})
     pts = {p["id"]: p for p in result.get("outlet_map", {}).get("points", [])}
     wire = {r["id"]: r for r in result.get("wire", {}).get("rows", [])}
+    ag = result.get("agenda", {})
+    agenda_rows = {r["id"]: r for r in ag.get("outlets", [])}
+    frame_labels = {x["key"]: x["label"] for x in ag.get("frames", [])}
+    nmd = result.get("named", {})
+    name_of = {x["qid"]: x["name"] for x in nmd.get("names", [])}
+    named_cells = defaultdict(list)
+    for c in nmd.get("cells", []):
+        named_cells[c["outlet"]].append({**c, "name": name_of.get(c["qid"], c["qid"])})
     lead = {r["id"]: r for r in result.get("lead_lag", {}).get("rank", [])}
     edits_by = defaultdict(list)
     for e in f.edits:
@@ -220,6 +228,8 @@ def dossiers(engine: Engine, f: Facts, result: dict) -> dict:
             "copies_from": [{"id": s, "name": f.outlets[s].name, "n": c} for s, c in copy_in[o].most_common(6) if s in f.outlets],
             "copied_by": [{"id": t, "name": f.outlets[t].name, "n": c} for t, c in copy_out[o].most_common(6) if t in f.outlets],
             "edits": edits_by[o][:15], "n_edits": len(edits_by[o]),
+            "agenda": [{"frame": frame_labels[k], **v} for k, v in (agenda_rows.get(o, {}).get("frames") or {}).items()],
+            "named": sorted(named_cells[o], key=lambda c: -abs(np.log(max(c["ratio"], 1e-3)))),
         }
         _write(out / f"{o}.json", doss)
         n += 1

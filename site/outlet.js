@@ -37,6 +37,8 @@ function render(D, all) {
       <section class="d-skip"><h3 class="sub">Big stories it skipped this week</h3><p class="small muted">Stories the model gave it at least a 1 in 4 chance of covering, which it did not.</p><div id="skipped"></div></section>
       <section class="d-broke"><h3 class="sub">Stories it broke</h3><div id="broke"></div></section>
       <section class="d-copy"><h3 class="sub">Copying</h3><div id="copy"></div></section>
+      <section class="d-agenda"><h3 class="sub">What it spends its coverage on</h3><p class="small muted">Its share of stories in each frame, against the share across all outlets.</p><div id="agenda"></div></section>
+      <section class="d-named"><h3 class="sub">Who it puts in its headlines</h3><p class="small muted">Against other outlets' headlines on the same stories. Outlined: a clear difference after correcting for many comparisons.</p><div id="named"></div></section>
       <section class="d-edits"><h3 class="sub">Headlines it changed</h3><div id="edits"></div></section>
     </div>`;
 
@@ -85,6 +87,13 @@ function render(D, all) {
   $("copy").innerHTML = (D.copies_from.length || D.copied_by.length)
     ? `<h5>Ran text first published by</h5>${D.copies_from.map(crow).join("") || '<p class="small muted">Nobody.</p>'}<h5>Its text was run by</h5>${D.copied_by.map(crow).join("") || '<p class="small muted">Nobody.</p>'}`
     : `<p class="small muted">No uncredited copying found either way.</p>`;
+  const rbar = (label, r, clear, title) => `<div class="wrow${clear ? " clearrow" : ""}" title="${esc(title)}"><span>${esc(label)}</span><div class="bar"><i style="width:${Math.min(100, 33 * (r ?? 0))}%;background:${(r ?? 1) >= 1 ? PINK : GREEN}"></i></div><span class="own">${fmtX(r)}</span></div>`;
+  $("agenda").innerHTML = D.agenda && D.agenda.length
+    ? D.agenda.slice().sort((a, b) => (b.ratio ?? 0) - (a.ratio ?? 0)).map((a) => rbar(a.frame, a.ratio, a.lo > 1 || a.hi < 1, `${pct(a.share)} of its stories`)).join("")
+    : `<p class="small muted">Not enough framed stories yet.</p>`;
+  $("named").innerHTML = D.named && D.named.length
+    ? D.named.slice(0, 8).map((c) => rbar(c.name, c.ratio, c.clear, `${c.named} of ${c.stories} headlines; its peers' rate predicts ${c.expected}`)).join("")
+    : `<p class="small muted">Not enough comparable stories yet${D.id === "toi" ? " (its feed gives headlines rebuilt from web addresses, where names cannot be read)" : ""}.</p>`;
   $("edits").innerHTML = D.edits.length ? D.edits.map((e) => `<div class="edit"><div class="o">${e.minutes_after != null ? `changed within ${e.minutes_after < 120 ? e.minutes_after + " min" : Math.round(e.minutes_after / 60) + " h"}` : "changed"} &middot; ${extLink(e.url, "read the article")}</div><div class="h">${diffWords(e.old, e.new)}</div></div>`).join("")
     : `<p class="small muted">No changed headlines logged yet.</p>`;
 }

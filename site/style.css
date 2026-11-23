@@ -394,3 +394,5 @@ table.agenda td { min-width: 40px; }
 .flow b { font-family: var(--display); font-weight: 900; font-size: 30px; text-align: right; }
 .flow small { grid-column: 1 / -1; color: var(--mute); font-size: 12px; }
 @media (max-width: 980px) { .s-bridge, .s-agenda { grid-column: 1 / -1; } }
+
+.clearrow .bar { outline: 2px solid var(--ink); outline-offset: 1px; }
