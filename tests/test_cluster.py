@@ -43,3 +43,22 @@ def test_blob_roundtrip():
     v = unit(0.3, -0.2, 0.9)
     assert np.allclose(from_blob(to_blob(v)), v, atol=1e-3)
     assert np.array_equal(from_blob(to_blob(v, np.float32), np.float32), v)
+
+
+
+def test_place_rule_keeps_different_states_apart():
+    import numpy as np
+    from nazariya.cluster import assign_online
+    a = np.array([1.0, 0.0, 0.0]); b = np.array([0.95, 0.312, 0.0]); b /= np.linalg.norm(b)  # cosine 0.95
+    c = np.array([0.75, 0.66, 0.0]); c /= np.linalg.norm(c)                                   # cosine ~0.75 to a
+    vecs = np.stack([a, c, b]); times = np.array([0.0, 10.0, 20.0])
+    kerala, bihar = frozenset({"Q1186"}), frozenset({"Q1165"})
+    # same text-likeness, different states: c (0.75 < 0.80 override) starts its own event
+    labels, _, _ = assign_online(vecs, times, ["o1", "o2", "o3"], 0.65, places=[kerala, bihar, bihar])
+    assert labels[0] != labels[1]
+    # no places known: c joins a as before
+    labels2, _, _ = assign_online(vecs, times, ["o1", "o2", "o3"], 0.65)
+    assert labels2[0] == labels2[1]
+    # near-duplicate (0.95 >= 0.80) joins despite a state mismatch
+    labels3, _, _ = assign_online(np.stack([a, b]), np.array([0.0, 5.0]), ["o1", "o2"], 0.65, places=[kerala, bihar])
+    assert labels3[0] == labels3[1]

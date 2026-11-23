@@ -30,13 +30,21 @@ from sqlalchemy import and_, bindparam, delete, insert, select, update
 from sqlalchemy.engine import Engine
 
 from .db import (
-    article_events, article_text, article_vectors, articles, as_utc, events, get_engine, insert_ignore,
+    article_events, article_text, article_vectors, articles, as_utc, entities, events, get_engine, insert_ignore,
+    mentions,
 )
 from .embed import doc_text, embed
 
 MODEL = "bge-m3"
 TAU = 0.650  # best pairwise F1 when replaying this algorithm on labelled pairs (reports/clustering_eval.md)
 WINDOW = timedelta(hours=72)  # an event stays open this long after its latest article
+# An article that names states, none of which its candidate event names, joins only if it is nearly a
+# duplicate of the event (stops similar stories in different states, e.g. road accidents, merging).
+# On the labelled pairs this split none of 110 same-event pairs. Delhi is ignored: it is named in
+# passing by too many national stories.
+PLACE_OVERRIDE = 0.80
+PLACE_CANDIDATES = 5
+DELHI = "Q9357528"
 VECTOR_TTL = timedelta(days=3)  # a vector is only needed until its article is assigned and framed
 MAX_EMBED_PER_RUN = 3000  # newest first; bounds the text read (transfer) and memory per run
 FINISHED = ("extracted", "headline_only", "skipped", "failed")
@@ -59,11 +67,13 @@ class EventState:
     rep_id: int | None = None  # current representative article (closest to centroid)
     rep_title: str | None = None
     rep_vec: np.ndarray | None = None
+    places: Counter = field(default_factory=Counter)  # states named by member articles
 
 
 def assign_online(vecs: np.ndarray, times: np.ndarray, outlets: list[str], tau: float,
                   state: list[EventState] | None = None, window_s: float = WINDOW.total_seconds(),
-                  article_ids: list[int] | None = None) -> tuple[list[int], list[float], list[EventState]]:
+                  article_ids: list[int] | None = None,
+                  places: list[frozenset] | None = None) -> tuple[list[int], list[float], list[EventState]]:
     """Assign rows of `vecs` (L2-normalised, in any order) to events.
 
     Returns (event index per row into the returned state list, similarity per row, state).
@@ -82,14 +92,23 @@ def assign_online(vecs: np.ndarray, times: np.ndarray, outlets: list[str], tau: 
     n = len(state)
     for i in order:
         v, t = vecs[i], times[i]
+        here = places[i] if places is not None else frozenset()
         best, best_sim = -1, -1.0
         if n:
             active = np.abs(t - last[:n]) <= window_s
             if active.any():
                 s = cent[:n] @ v
                 s[~active] = -np.inf
-                best = int(np.argmax(s))
-                best_sim = float(s[best])
+                # best candidate whose states do not contradict this article's
+                for k in np.argsort(-s)[:PLACE_CANDIDATES]:
+                    sk = float(s[k])
+                    if sk < tau:
+                        break
+                    ev_places = state[k].places
+                    if here and ev_places and not (here & set(ev_places)) and sk < PLACE_OVERRIDE:
+                        continue
+                    best, best_sim = int(k), sk
+                    break
         if best >= 0 and best_sim >= tau:
             ev = state[best]
             ev.sum = ev.sum + v
@@ -105,6 +124,7 @@ def assign_online(vecs: np.ndarray, times: np.ndarray, outlets: list[str], tau: 
             cent[n], last[n] = v, t
             n += 1
         ev.outlets[outlets[i]] += 1
+        ev.places.update(here)
         if article_ids is not None:
             ev.members.append(article_ids[i])
             ev.sims.append(best_sim)
@@ -213,7 +233,28 @@ def load_active_events(conn, since: datetime, model: str) -> list[EventState]:
         for ev in state:
             if ev.rep_id in rep_vecs:
                 ev.rep_vec = from_blob(rep_vecs[ev.rep_id])
+        for i in range(0, len(ids), 1000):
+            for eid, qid in conn.execute(
+                select(article_events.c.event_id, mentions.c.qid)
+                .join(mentions, mentions.c.article_id == article_events.c.article_id)
+                .join(entities, entities.c.qid == mentions.c.qid)
+                .where(article_events.c.event_id.in_(ids[i:i + 1000]), entities.c.type == "state", mentions.c.qid != DELHI)
+            ):
+                by_id[eid].places[qid] += 1
     return state
+
+
+def article_places(conn, article_ids: list[int]) -> dict[int, frozenset]:
+    """States (except Delhi) named in each article, from the entity linker's mentions."""
+    out: dict[int, set] = {}
+    for i in range(0, len(article_ids), 1000):
+        for aid, qid in conn.execute(
+            select(mentions.c.article_id, mentions.c.qid)
+            .join(entities, entities.c.qid == mentions.c.qid)
+            .where(mentions.c.article_id.in_(article_ids[i:i + 1000]), entities.c.type == "state", mentions.c.qid != DELHI)
+        ):
+            out.setdefault(aid, set()).add(qid)
+    return {k: frozenset(v) for k, v in out.items()}
 
 
 def pick_representative(ev: EventState, new_members: dict[int, tuple[str, np.ndarray]]) -> None:
@@ -243,11 +284,13 @@ def assign_new(engine: Engine, now: datetime, tau: float = TAU, model: str = MOD
             return {"assigned": 0}
         oldest = min(as_utc(r.published_at) for r in new)
         state = load_active_events(conn, oldest - WINDOW, model)
+        where = article_places(conn, [r.id for r in new])
     n_existing = len(state)
     vecs = np.stack([from_blob(r.vec) for r in new])
     times = np.array([as_utc(r.published_at).timestamp() for r in new])
     labels, sims, state = assign_online(vecs, times, [r.outlet_id for r in new], tau, state,
-                                        article_ids=[r.id for r in new])
+                                        article_ids=[r.id for r in new],
+                                        places=[where.get(r.id, frozenset()) for r in new])
     new_members = {r.id: (r.title, v) for r, v in zip(new, vecs)}
     touched = [ev for ev in state if ev.members]
     for ev in touched:

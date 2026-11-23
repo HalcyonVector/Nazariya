@@ -64,12 +64,13 @@ jobs:
       - name: Re-check older articles
         # logs stories that are taken down (two clear "gone" checks hours apart); capped per run
         run: python -m nazariya.recheck
+      - name: Link entities
+        # before clustering: the states an article names keep different-state stories apart
+        run: python -m nazariya.entities.run
       - name: Cluster
         # bge-m3 on a CPU runner does about 1 article/s; the cap keeps a run bounded and any
         # backlog carries over to the next run
         run: python -m nazariya.cluster --budget-min 60
-      - name: Link entities
-        run: python -m nazariya.entities.run
       - name: Predict frames
         run: python -m nazariya.framing.infer
       - name: Update facts
