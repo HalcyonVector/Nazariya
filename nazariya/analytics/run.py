@@ -35,6 +35,9 @@ MODELS = {
     "ownership": outlets.ownership,
     "forecast": forecast.run,
     "removals": outlets.removed_stories,
+    "named": outlets.who_named,
+    "bridges": outlets.language_bridges,
+    "agenda": outlets.agenda,
 }
 
 

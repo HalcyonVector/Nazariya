@@ -251,4 +251,29 @@ def editions_step(engine: Engine, result: dict, now: datetime) -> dict:
     for r in rows:
         (out / f"{r.issue}.json").write_text(r.body, encoding="utf-8")
     _write(out / "index.json", [{"issue": r.issue, "number": r.number, "published_at": _iso(as_utc(r.published_at))} for r in rows])
+    write_feed(rows)
     return {"editions": len(rows), "new": made}
+
+
+SITE_URL = "https://halcyonvector.github.io/Nazariya/"
+
+
+def write_feed(rows) -> None:
+    """site/data/feed.xml: an RSS feed with one item per weekly issue, carrying that week's findings."""
+    from email.utils import format_datetime
+    from xml.sax.saxutils import escape
+    items = []
+    for r in rows[:30]:
+        body = json.loads(r.body)
+        found = "".join(f"<li>{escape(x['text'])}</li>" for x in body.get("findings", []))
+        when = as_utc(r.published_at)
+        link = f"{SITE_URL}?issue={r.issue}"
+        items.append(f"<item><title>Nazariya No. {r.number}: the week {r.issue}</title><link>{link}</link>"
+                     f"<guid isPermaLink=\"true\">{link}</guid><pubDate>{format_datetime(when)}</pubDate>"
+                     f"<description>{escape('<ul>' + found + '</ul>')}</description></item>")
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>'
+           "<title>Nazariya: weekly issues</title>"
+           f"<link>{SITE_URL}</link>"
+           "<description>Each week's findings on how India's newsrooms covered the news.</description>"
+           "<language>en-in</language>" + "".join(items) + "</channel></rss>\n")
+    (DATA / "feed.xml").write_text(xml, encoding="utf-8")

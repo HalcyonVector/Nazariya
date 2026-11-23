@@ -211,6 +211,7 @@ coverage = Table(
     Column("first_article_id", Integer),
     Column("first_url", Text),
     Column("first_title", Text),
+    Column("names", JSON),      # people and parties (Wikidata ids) named in this outlet's headlines on it
 )
 Index("ix_coverage_outlet", coverage.c.outlet_id)
 

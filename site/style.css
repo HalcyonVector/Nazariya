@@ -373,3 +373,24 @@ table.clock td.nv { background: none; font-weight: 700; font-size: 11px; padding
 .s-break .item { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
 .s-break .item .score { margin-top: 0; white-space: nowrap; }
 @media (max-width: 980px) { .breakgrid { grid-template-columns: 1fr; } }
+
+/* ================= who gets named, bridges, agenda ================= */
+.s-named { grid-column: 1 / 13; padding-left: 0; padding-right: 0; }
+.s-bridge { grid-column: 1 / 6; padding-left: 0; }
+.s-agenda { grid-column: 6 / 13; padding-right: 0; border-left: 1px solid var(--rule); }
+table.named { border-collapse: separate; border-spacing: 2px; font-size: 11px; margin-top: 6px; }
+table.named th { font-weight: 500; color: var(--soft); white-space: nowrap; padding: 2px 4px; }
+table.named th.r { text-align: right; font-weight: 600; color: var(--ink); }
+table.named th.r a { text-decoration: none; }
+table.named th.c { vertical-align: bottom; height: 120px; }
+table.named th.c span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; }
+table.named td { min-width: 46px; height: 24px; text-align: center; font-weight: 600; }
+table.named td.clear { outline: 2.5px solid var(--ink); outline-offset: -2px; }
+table.named td.na { color: var(--hair); background: none; }
+table.agenda td { min-width: 40px; }
+.flow { display: grid; grid-template-columns: auto auto auto 1fr; gap: 8px; align-items: baseline; padding: 10px 0; border-bottom: 1px dashed var(--hair); }
+.flow .lang { font-family: var(--display); font-weight: 800; font-size: 18px; }
+.flow .arr { color: var(--pink); font-weight: 900; font-size: 20px; }
+.flow b { font-family: var(--display); font-weight: 900; font-size: 30px; text-align: right; }
+.flow small { grid-column: 1 / -1; color: var(--mute); font-size: 12px; }
+@media (max-width: 980px) { .s-bridge, .s-agenda { grid-column: 1 / -1; } }

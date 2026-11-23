@@ -12,7 +12,7 @@ const SOURCE = ISSUE && /^\d{4}-W\d{2}$/.test(ISSUE) ? `data/editions/${ISSUE}.j
 getJSON(SOURCE).then((data) => {
   A = data;
   Object.entries(A.outlets).forEach(([id, o]) => (NAME[id] = o.name));
-  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, releases, clock, ownership, breakout, removed, allStories, issues]) {
+  for (const f of [header, under, outletMap, leadLag, selection, attention, halfLife, wire, copying, edits, translation, releases, clock, ownership, breakout, removed, named, bridges, agenda, allStories, issues]) {
     try { f(); } catch (e) { console.error(f.name, e); }
   }
 }).catch((e) => {
@@ -429,4 +429,65 @@ function removed() {
       ${r.published_at ? `published ${ago(r.published_at)}` : ""} &middot; HTTP ${r.status}</div><div class="h"><del>${esc(r.title)}</del></div></div>`).join("") : "") +
     (R.by_outlet.some((o) => o.removed) ? `<h5>Removed per 1,000 re-checked</h5>` + R.by_outlet.filter((o) => o.removed).slice(0, 12).map((o) =>
       `<div class="nb" title="${o.removed} of ${o.checked}; 95% interval ${(1000 * o.lo).toFixed(1)} to ${(1000 * o.hi).toFixed(1)}"><a href="${outletHref(o.id)}">${esc(o.name)}</a><span>${(1000 * o.rate).toFixed(1)}</span></div>`).join("") : "");
+}
+
+// ---------------------------------------------------------------- who gets named
+function named() {
+  const N = A.named, el = $("namedbox");
+  if (!N || !N.ready) return pending(el, N);
+  const cell = {};
+  N.cells.forEach((c) => (cell[c.outlet + "|" + c.qid] = c));
+  const clear = N.cells.filter((c) => c.clear).sort((a, b) => Math.abs(Math.log(b.ratio + 1e-3)) - Math.abs(Math.log(a.ratio + 1e-3)));
+  const nm2 = Object.fromEntries(N.names.map((x) => [x.qid, x.name]));
+  hed("hed-named", clear.length
+    ? `${esc(nm(clear[0].outlet))} names ${esc(nm2[clear[0].qid])} in <em>${fmtX(clear[0].ratio)}</em> as many headlines as its peers`
+    : `No newsroom <em>clearly</em> stands apart yet in who it names`);
+  const rows = N.outlets.filter((o) => N.names.some((x) => cell[o.id + "|" + x.qid]));
+  let h = `<table class="named"><tr><th></th>${N.names.map((x) => `<th class="c"><span>${esc(x.name)}</span></th>`).join("")}</tr>`;
+  for (const o of rows) {
+    h += `<tr><th class="r"><a href="${outletHref(o.id)}">${esc(o.name)}</a></th>` + N.names.map((x) => {
+      const c = cell[o.id + "|" + x.qid];
+      if (!c) return `<td class="na" title="too few comparable stories">&middot;</td>`;
+      const t = Math.max(-1, Math.min(1, Math.log(Math.max(c.ratio, 0.05)) / Math.log(4)));
+      const bg = t >= 0 ? `rgba(255,72,176,${0.1 + 0.85 * t})` : `rgba(0,169,92,${0.1 - 0.85 * t})`;
+      return `<td class="${c.clear ? "clear" : ""}" style="background:${bg}" title="${esc(o.name)}: ${c.named} of ${c.stories} headlines name ${esc(x.name)}; its peers' rate predicts ${c.expected}. q = ${c.q}">${fmtX(c.ratio)}</td>`;
+    }).join("") + "</tr>";
+  }
+  el.innerHTML = h + "</table>";
+  $("namedmethod").textContent = `${N.stories.toLocaleString()} stories, ${N.tests} outlet-name comparisons; exact binomial tests against the peers' rate, Benjamini-Hochberg false-discovery rate 5%. Cells need 5+ expected mentions.` +
+    (N.left_out.length ? ` Left out (headlines rebuilt from web addresses, where names cannot be read): ${N.left_out.join(", ")}.` : "");
+}
+
+// ---------------------------------------------------------------- language bridges
+function bridges() {
+  const B = A.bridges, el = $("bridgebox");
+  if (!B || !B.ready) return pending(el, B);
+  const top = B.flows.slice().sort((a, b) => b.share - a.share)[0];
+  if (top) hed("hed-bridge", `<em>${pct(top.share)}</em> of stories that broke in ${esc(top.from)} reached ${esc(top.to)} outlets`);
+  el.innerHTML = B.flows.map((f) => `<div class="flow"><span class="lang">${esc(f.from)}</span><span class="arr">&rarr;</span><span class="lang">${esc(f.to)}</span>
+      <b>${pct(f.share)}</b><small>${f.crossed} of ${f.stories} stories${f.median_hours != null ? `, median ${f.median_hours} h` : ""}</small></div>`).join("") +
+    (B.bridges.length ? `<h5>First to carry a story across</h5>` + B.bridges.slice(0, 8).map((b) =>
+      `<div class="nb"><a href="${outletHref(b.id)}"><i class="dot" style="background:${GC[b.group]}"></i>${esc(b.name)}</a><span>${b.carried} stories, median ${b.median_hours} h</span></div>`).join("") : "");
+}
+
+// ---------------------------------------------------------------- agenda fingerprints
+function agenda() {
+  const G = A.agenda, el = $("agendabox");
+  if (!G || !G.ready) return pending(el, G);
+  let best = null;
+  for (const o of G.outlets) for (const fr of G.frames) {
+    const c = o.frames[fr.key];
+    if (c && c.lo > 1 && (!best || c.ratio > best.ratio)) best = { o, fr, ratio: c.ratio };
+  }
+  if (best) hed("hed-agenda", `${esc(best.o.name)} gives <em>${fmtX(best.ratio)}</em> the field's share to ${esc(best.fr.label)} stories`);
+  let h = `<table class="named agenda"><tr><th></th>${G.frames.map((f) => `<th class="c"><span>${esc(f.label)}</span></th>`).join("")}</tr>`;
+  for (const o of G.outlets) {
+    h += `<tr><th class="r"><a href="${outletHref(o.id)}">${esc(o.name)}</a></th>` + G.frames.map((f) => {
+      const c = o.frames[f.key];
+      const t = Math.max(-1, Math.min(1, Math.log(Math.max(c.ratio || 0.05, 0.05)) / Math.log(3)));
+      const bg = t >= 0 ? `rgba(0,120,191,${0.08 + 0.85 * t})` : `rgba(255,232,0,${0.15 - 0.6 * t})`;
+      return `<td class="${c.lo > 1 || c.hi < 1 ? "clear" : ""}" style="background:${bg};color:${t > 0.5 ? "#fff" : INK}" title="${esc(o.name)}: ${pct(c.share)} of its stories (field ${pct(f.share)})">${fmtX(c.ratio)}</td>`;
+    }).join("") + "</tr>";
+  }
+  el.innerHTML = h + `</table><p class="small muted">Outlined: the 95% interval excludes 1x. Frames are predicted per article by a classifier trained on LLM labels (provisional).</p>`;
 }

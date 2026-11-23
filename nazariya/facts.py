@@ -64,7 +64,7 @@ def _qids(aid: int, ment: dict, lede: dict) -> set[str]:
     """Entities named in an article. A single Delhi mention in an article that opens with a
     "New Delhi:" dateline is the dateline itself, not the story's place, and is dropped."""
     dateline = bool(DATELINE_RE.match(lede.get(aid, "")))
-    return {q for q, n in ment.get(aid, []) if not (q == DELHI and dateline and n <= 1)}
+    return {q for q, n, _ in ment.get(aid, []) if not (q == DELHI and dateline and n <= 1)}
 
 
 def _chunks(xs: list, n: int = CHUNK):
@@ -102,9 +102,10 @@ def run(engine: Engine | None = None, days: float = REFRESH_DAYS, now: datetime 
         frame: dict[int, str] = {}
         vecs: dict[int, bytes] = {}
         for chunk in _chunks(art_ids):
-            for aid, qid, n in conn.execute(select(mentions.c.article_id, mentions.c.qid, mentions.c.n)
+            for aid, qid, n, in_title in conn.execute(select(mentions.c.article_id, mentions.c.qid, mentions.c.n,
+                                                             mentions.c.in_title)
                                             .where(mentions.c.article_id.in_(chunk))):
-                ment[aid].append((qid, n))
+                ment[aid].append((qid, n, bool(in_title)))
             for aid, txt in conn.execute(select(article_text.c.article_id, article_text.c.text)
                                          .where(article_text.c.article_id.in_(chunk))):
                 lede[aid] = txt[:80]
@@ -174,6 +175,10 @@ def run(engine: Engine | None = None, days: float = REFRESH_DAYS, now: datetime 
                 "first_own_at": min(own) if own else None,
                 "n_articles": len(oms), "n_wire": sum(bool(m.agency or m.syndicated_of) for m in oms),
                 "n_text": sum(m.status == "extracted" for m in oms),
+                # people and parties named in this outlet's HEADLINES on the event: every outlet's
+                # headline is readable, while article text is not (paywalls, extraction limits)
+                "names": sorted({q for m in oms for q, _, in_title in ment.get(m.id, [])
+                                 if in_title and etype.get(q) in ("person", "party")}),
             })
 
     with engine.begin() as conn:

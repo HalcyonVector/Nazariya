@@ -40,14 +40,25 @@ def test_death_toll():
     assert facts.death_toll("") is None
 
 
+def test_headline_edits_ignore_punctuation_and_other_sources():
+    known = {"https://x/1": (1, "Delhi NCR News 60 acre land grab attempt", NOW, "sitemap"),
+             "https://x/2": (2, "Delhi NCR News road race held", NOW, "sitemap"),
+             "https://x/3": (3, "Old headline here", NOW, "sitemap")}
+    feed = {"https://x/1": ("Delhi NCR News: 60 acre land grab attempt", "sitemap"),   # punctuation only
+            "https://x/2": ("Delhi NCR | road race held today", "supp"),              # another source's format
+            "https://x/3": ("New headline here", "sitemap")}                           # a real edit
+    out = headline_edits(known, feed, "o", NOW)
+    assert [e["article_id"] for e in out] == [3]
+
+
 def test_headline_edits_ignores_slugs_and_cosmetic_changes():
     known = {
         "https://x/a": (1, "Minister resigns over scam", NOW),
         "https://x/b": (2, "Minister's  ‘big’ claim", NOW),
         "https://x/teenager-held-on-charge/1": (3, "Teenager held on charge", NOW),  # slug title
     }
-    feed = {"https://x/a": "Minister quits amid probe", "https://x/b": "minister's 'big' claim",
-            "https://x/teenager-held-on-charge/1": "Teen held", "https://x/new": "New story"}
+    feed = {"https://x/a": ("Minister quits amid probe", None), "https://x/b": ("minister's 'big' claim", None),
+            "https://x/teenager-held-on-charge/1": ("Teen held", None), "https://x/new": ("New story", None)}
     out = headline_edits(known, feed, "o", NOW)
     assert [(e["article_id"], e["old_title"], e["new_title"]) for e in out] == \
         [(1, "Minister resigns over scam", "Minister quits amid probe")]
@@ -89,7 +100,7 @@ def _seed(engine):
             {"article_id": 1, "qid": "Q1193", "n": 2, "in_title": True},
             {"article_id": 2, "qid": "Q1193", "n": 2, "in_title": True},
             {"article_id": 2, "qid": "Q9357528", "n": 1, "in_title": False},  # the dateline only
-            {"article_id": 2, "qid": "Q1", "n": 1, "in_title": False},
+            {"article_id": 2, "qid": "Q1", "n": 1, "in_title": True},
         ])
         v_en = np.array([1, 0, 0, 0], dtype=np.float16).tobytes()
         v_hi = np.array([0.6, 0.8, 0, 0], dtype=np.float16).tobytes()
@@ -118,6 +129,7 @@ def test_facts_summarise_an_event(tmp_path):
     assert cov["en2"].n_wire == 1 and cov["en2"].first_own_at is None  # PTI copy is not own reporting
     assert cov["en1"].first_own_at is not None
     assert cov["hi1"].first_url == "https://x/4" and cov["hi1"].first_article_id == 4
+    assert cov["en1"].names == ["Q1"] and cov["hi1"].names == []
     assert cp["outlet_id"] == "en2" and cp["source_outlet_id"] == "en1" and cp["agency"] == "PTI"
     assert facts.run(engine, now=NOW)["events"] == 1  # idempotent
 

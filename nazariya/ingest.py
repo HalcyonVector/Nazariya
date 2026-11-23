@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -122,6 +123,7 @@ class Ingester:
                 chosen = (src["kind"], items, row)
                 break
 
+        supp_urls: set[str] = set()  # items that came from supplementary feeds
         if chosen and feed.get("supplementary") and chosen[0] != "gnews":
             # Some outlets publish faster than their main feed can hold between two runs (Amar Ujala's
             # news sitemap keeps ~1.6 hours of ~440 stories an hour). Their category feeds hold a day
@@ -133,6 +135,7 @@ class Ingester:
                 res = await fetch_source(self.fetcher, src["kind"], src["url"], ua)
                 extra = [i for i in self.in_outlet_scope(o, res.items) if i.url not in seen]
                 seen.update(i.url for i in extra)
+                supp_urls.update(i.url for i in extra)
                 items = items + extra
                 attempts.append({
                     "run_id": self.run_id, "outlet_id": o["id"], "source_url": res.resolved_url or src["url"],
@@ -150,8 +153,11 @@ class Ingester:
             headline_only = kind == "gnews" or feed.get("access") == "headline_only"
             rewrites = o.get("rewrite_hosts") or {}
             candidates: dict[str, dict] = {}
-            feed_titles: dict[str, str] = {}
+            feed_titles: dict[str, tuple[str, str]] = {}
             for it in items:
+                # sitemaps and category feeds format the same headline differently, so an item's
+                # headline is only ever compared with what the same kind of source said before
+                item_kind = "supp" if it.url in supp_urls else kind
                 published, fixed = fix_published(it.published, self.now)
                 if published is not None and self.now - published > MAX_ITEM_AGE:
                     continue
@@ -171,14 +177,14 @@ class Ingester:
                     "published_at": published or self.now,
                     "date_fixed": fixed or published is None,
                     "discovered_at": self.now,
-                    "source_kind": kind,
+                    "source_kind": item_kind,
                     "status": "headline_only" if headline_only else "pending",
                     "access": "headline_only" if headline_only else None,
                     "attempts": 0,
                 })
                 # the feed's own headline (not one rebuilt from the URL), for edit tracking
                 if kind != "gnews" and it.title:
-                    feed_titles[url] = it.title
+                    feed_titles[url] = (it.title, item_kind)
             with self.engine.begin() as conn:
                 known = known_titles(conn, list(candidates))
                 fresh = [r for u, r in candidates.items() if u not in known]
@@ -302,30 +308,35 @@ class Ingester:
 
 
 def _norm_title(t: str) -> str:
-    return " ".join(t.replace("‘", "'").replace("’", "'").replace("“", '"')
-                    .replace("”", '"').split()).casefold()
+    """A headline with punctuation, symbols, spacing and case set aside: "Delhi NCR News: X" and
+    "Delhi NCR News X" are the same headline, and so are curly and straight quotes."""
+    kept = "".join(" " if unicodedata.category(ch)[0] in "PSZ" else ch for ch in unicodedata.normalize("NFKC", t))
+    return " ".join(kept.split()).casefold()
 
 
 def known_titles(conn, urls: list[str]) -> dict[str, tuple]:
     """url -> (id, stored title, published_at) for URLs already in the database."""
     found: dict[str, tuple] = {}
     for i in range(0, len(urls), 500):
-        rows = conn.execute(select(articles.c.url, articles.c.id, articles.c.title, articles.c.published_at)
+        rows = conn.execute(select(articles.c.url, articles.c.id, articles.c.title, articles.c.published_at,
+                                   articles.c.source_kind)
                             .where(articles.c.url.in_(urls[i:i + 500])))
-        found.update({r.url: (r.id, r.title, r.published_at) for r in rows})
+        found.update({r.url: (r.id, r.title, r.published_at, r.source_kind) for r in rows})
     return found
 
 
-def headline_edits(known: dict[str, tuple], feed_titles: dict[str, str], outlet_id: str,
+def headline_edits(known: dict[str, tuple], feed_titles: dict[str, tuple[str, str]], outlet_id: str,
                    now: datetime) -> list[dict]:
-    """A headline counts as edited when the outlet's own feed now shows a different headline for a
-    URL it showed before. Headlines rebuilt from URL slugs never count, and neither do changes in
-    whitespace, case or quote style."""
+    """A headline counts as edited when the same kind of source (the outlet's main feed, or one of its
+    supplementary feeds) now shows a different headline for a URL it showed before. Headlines rebuilt
+    from URL slugs never count, and neither do changes in punctuation, spacing or case."""
     out = []
-    for url, new in feed_titles.items():
+    for url, (new, kind) in feed_titles.items():
         if url not in known:
             continue
-        aid, old, published = known[url]
+        aid, old, published, old_kind = (tuple(known[url]) + (None,))[:4]
+        if old_kind is not None and old_kind != kind:
+            continue
         if not old or old == title_from_url(url) or _norm_title(old) == _norm_title(new):
             continue
         out.append({"article_id": aid, "outlet_id": outlet_id, "url": url, "old_title": old,

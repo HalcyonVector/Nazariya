@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
 from ..config import CONFIG
-from ..db import as_utc, copies, coverage, event_facts, outlets, releases, removals, title_edits
+from ..db import as_utc, copies, coverage, entities, event_facts, outlets, releases, removals, title_edits
 
 
 @dataclass
@@ -34,6 +34,7 @@ class Facts:
     edits: list[dict] = field(default_factory=list)
     releases: list[dict] = field(default_factory=list)
     rechecks: list[dict] = field(default_factory=list)
+    entity_names: dict[str, str] = field(default_factory=dict)
 
     @property
     def days(self) -> float:
@@ -79,6 +80,9 @@ def load(engine: Engine, days: float = 28, now: datetime | None = None) -> Facts
         cps = [dict(r) for r in conn.execute(select(copies).where(copies.c.published_at >= since)).mappings()]
         eds = [dict(r) for r in conn.execute(select(title_edits).where(title_edits.c.seen_at >= since)
                                              .order_by(title_edits.c.seen_at.desc())).mappings()]
+    from ..ingest import _norm_title
+    # edits stored before punctuation-only differences were ignored (e.g. "News" -> "News:")
+    eds = [e for e in eds if _norm_title(e["old_title"]) != _norm_title(e["new_title"])]
     for e in eds:
         e["seen_at"], e["published_at"] = as_utc(e["seen_at"]), as_utc(e["published_at"])
     with engine.connect() as conn:
@@ -94,4 +98,6 @@ def load(engine: Engine, days: float = 28, now: datetime | None = None) -> Facts
     evs = {k: v for k, v in evs.items() if k in cov}
     for e in evs.values():
         e["n_news_outlets"] = len(cov[e["event_id"]])
-    return Facts(now, since, outs, evs, cov, cps, eds, rels, chk)
+    with engine.connect() as conn:
+        names = {r.qid: r.label_en for r in conn.execute(select(entities.c.qid, entities.c.label_en))}
+    return Facts(now, since, outs, evs, cov, cps, eds, rels, chk, names)

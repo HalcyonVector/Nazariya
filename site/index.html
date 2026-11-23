@@ -10,7 +10,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,700&family=Work+Sans:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
+<link rel="alternate" type="application/rss+xml" title="Nazariya: weekly issues" href="data/feed.xml">
 </head>
 <body>
 <div class="paper">
@@ -26,7 +27,7 @@
   <nav class="sections">
     <a href="#lead">Passed over</a><a href="#map">The map</a><a href="#first">First past the post</a><a href="#select">News value</a>
     <a href="#atlas">The atlas</a><a href="#wire">Wire desk</a><a href="#life">Shelf life</a><a href="#copy">Copy desk</a>
-    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#breakout">Breakout</a><a href="#owners">Owners</a><a href="#releases">Official business</a><a href="#clock">Clock</a><a href="#all">All stories</a>
+    <a href="#edits">Corrections</a><a href="#translation">Translation</a><a href="#breakout">Breakout</a><a href="#named">Named</a><a href="#bridges">Bridges</a><a href="#agenda">Agenda</a><a href="#owners">Owners</a><a href="#releases">Official business</a><a href="#clock">Clock</a><a href="#all">All stories</a>
   </nav>
   <div class="statline" id="statline"></div>
   <div class="ticker" aria-label="Findings"><div class="ticker-label">Latest</div><div class="ticker-track"><div class="ticker-run" id="ticker"></div></div></div>
@@ -141,6 +142,28 @@
     <div class="breakgrid"><div id="watch"></div><div id="scorecard" class="file"></div></div>
   </article>
 
+  <article class="story s-named" id="named">
+    <div class="kicker k-pink">Who gets named &middot; same stories, binomial tests</div>
+    <h2 class="hed" id="hed-named">Who each newsroom puts in its headlines</h2>
+    <p class="dek">For the stories an outlet covered, how often its headlines name each of the most-named people and parties, against the other outlets' headlines on the same stories. Pink: more than its peers; green: fewer. An outlined cell is a clear difference after correcting for the number of comparisons; the rest may be chance.</p>
+    <div id="namedbox" class="scroll"></div>
+    <p class="byline" id="namedmethod"></p>
+  </article>
+
+  <article class="story s-bridge" id="bridges">
+    <div class="kicker k-green">Language bridges</div>
+    <h2 class="hed" id="hed-bridge">How stories cross languages</h2>
+    <p class="dek">For stories three or more outlets covered: how often a story that broke in one language was carried in another, how long that took, and which outlets carried it across first.</p>
+    <div id="bridgebox"></div>
+  </article>
+
+  <article class="story s-agenda" id="agenda">
+    <div class="kicker k-blue">Agenda fingerprints</div>
+    <h2 class="hed" id="hed-agenda">What each newsroom spends its coverage on</h2>
+    <p class="dek">Each outlet's share of stories in each frame, divided by the share across all outlets. Above 1x: it gives that kind of story more of its coverage than the field does.</p>
+    <div id="agendabox" class="scroll"></div>
+  </article>
+
   <article class="story s-own" id="owners">
     <div class="kicker k-green">Who owns the news &middot; permutation test</div>
     <h2 class="hed" id="hed-own">Do outlets with the same owner cover the same stories?</h2>
@@ -210,6 +233,6 @@
 </footer>
 </div>
 <script src="common.js?v=3"></script>
-<script src="analysis.js?v=13"></script>
+<script src="analysis.js?v=14"></script>
 </body>
 </html>

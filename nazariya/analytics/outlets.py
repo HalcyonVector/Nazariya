@@ -351,6 +351,174 @@ def removed_stories(f: Facts) -> dict:
                         "gone_by": r["first_gone_at"].isoformat()} for r in recent]}
 
 
+NAMED_TOP = 8           # most-named people and parties compared
+NAMED_MIN_EXPECTED = 5  # a cell is shown only if the peers' rate predicts 5+ mentions
+NAMED_FDR = 0.05        # false-discovery rate across all cells (Benjamini-Hochberg)
+
+
+def _slug_headlines(f: Facts) -> set[str]:
+    """Outlets whose headlines are mostly rebuilt from URL slugs ("Bjp names candidate ..."), where
+    names such as "BJP" cannot be recognised; comparing them would measure the feed, not the newsroom."""
+    from ..textutil import title_from_url
+    slug, n = Counter(), Counter()
+    for ev in f.cov.values():
+        for o, c in ev.items():
+            t, u = c.get("first_title"), c.get("first_url")
+            if t and u:
+                n[o] += 1
+                slug[o] += t == title_from_url(u)
+    return {o for o in n if n[o] >= 20 and slug[o] / n[o] > 0.5}
+
+
+def who_named(f: Facts) -> dict:
+    """Which people and parties each outlet puts in its headlines, against the other outlets covering
+    the SAME stories.
+
+    Headlines, not article text: every outlet's headline is readable, while article text is missing or
+    cut short for some (paywalls, extraction limits), which would make them look as if they name fewer
+    people. For the events an outlet covered among those 3+ outlets covered, its count of headlines
+    naming X is tested against the rate in its peers' headlines on the same events (exact binomial
+    test), with the false-discovery rate controlled across every outlet-name pair. Outlets whose
+    headlines come from URL slugs are left out."""
+    from scipy.stats import binomtest
+    slug = _slug_headlines(f)
+    by_event = defaultdict(list)
+    for eid, e in f.events.items():
+        if e["n_news_outlets"] < MIN_EVENT_OUTLETS:
+            continue
+        for o, c in f.cov[eid].items():
+            if o not in slug and c.get("names") is not None:
+                by_event[eid].append((o, set(c["names"])))
+    by_event = {k: v for k, v in by_event.items() if len(v) >= 2}
+    count = Counter(q for v in by_event.values() for _, ns in v for q in ns)
+    top = [q for q, _ in count.most_common(NAMED_TOP)]
+    if len(by_event) < 60 or not top:
+        return {"ready": False, "reason": f"{len(by_event)} stories from 2+ outlets so far; this needs 60"}
+    outs = sorted({o for v in by_event.values() for o, _ in v})
+    cells = []
+    for o in outs:
+        n = 0
+        own, peer, n_peer = Counter(), Counter(), 0
+        for v in by_event.values():
+            mine = [ns for oo, ns in v if oo == o]
+            if not mine:
+                continue
+            others = [ns for oo, ns in v if oo != o]
+            n += 1
+            n_peer += len(others)
+            for q in top:
+                own[q] += q in mine[0]
+                peer[q] += sum(q in ns for ns in others)
+        for q in top:
+            rate = peer[q] / n_peer if n_peer else 0.0
+            if n * rate < NAMED_MIN_EXPECTED or not 0 < rate < 1:
+                continue
+            k = own[q]
+            lo, hi = wilson(k, n)
+            cells.append({"outlet": o, "qid": q, "named": k, "stories": n, "expected": round(n * rate, 1),
+                          "share": round(k / n, 3), "peer_share": round(rate, 3), "ratio": round((k / n) / rate, 3),
+                          "lo": round(lo / rate, 3), "hi": round(hi / rate, 3),
+                          "p": float(binomtest(k, n, rate).pvalue)})
+    # Benjamini-Hochberg across all cells
+    order = sorted(range(len(cells)), key=lambda i: cells[i]["p"])
+    m = len(cells)
+    q_prev = 1.0
+    for rank, i in reversed(list(enumerate(order, start=1))):
+        q_prev = min(q_prev, cells[i]["p"] * m / rank)
+        cells[i]["q"] = round(q_prev, 4)
+        cells[i]["clear"] = q_prev < NAMED_FDR
+        cells[i]["p"] = round(cells[i]["p"], 5)
+    return {"ready": True, "stories": len(by_event), "tests": m,
+            "names": [{"qid": q, "name": f.entity_names.get(q, q), "stories": count[q]} for q in top],
+            "outlets": [{"id": o, "name": f.outlets[o].name, "group": f.outlets[o].group} for o in outs],
+            "left_out": [f.outlets[o].name for o in sorted(slug)], "cells": cells}
+
+
+LANG_GROUP = {"en": "English", "hi": "Hindi"}
+
+
+def language_bridges(f: Facts) -> dict:
+    """How stories cross between English, Hindi and the regional languages, and who carries them over.
+
+    For each event 3+ outlets covered, the language group it broke in (its first report), and for
+    every other language group that covered it, the outlet that was first in that group and how long
+    after the first report."""
+    lg = lambda o: LANG_GROUP.get(f.outlets[o].lang, "Regional languages")
+    present = {lg(o) for ev in f.cov.values() for o in ev}  # language groups with any coverage yet
+    flows = defaultdict(lambda: {"stories": 0, "crossed": 0, "delays": []})
+    bridge = defaultdict(lambda: {"n": 0, "delays": []})
+    for eid, e in f.events.items():
+        if e["n_news_outlets"] < MIN_EVENT_OUTLETS:
+            continue
+        cov = f.cov[eid]
+        first_o = min(cov, key=lambda o: cov[o]["first_at"])
+        src = lg(first_o)
+        t0 = cov[first_o]["first_at"]
+        groups = defaultdict(list)
+        for o, c in cov.items():
+            groups[lg(o)].append((c["first_at"], o))
+        for tgt in ("English", "Hindi", "Regional languages"):
+            if tgt == src or tgt not in present:
+                continue
+            fl = flows[(src, tgt)]
+            fl["stories"] += 1
+            if groups.get(tgt):
+                t, o = min(groups[tgt])
+                d = max(0.0, (t - t0).total_seconds() / 3600)
+                fl["crossed"] += 1
+                fl["delays"].append(d)
+                bridge[o]["n"] += 1
+                bridge[o]["delays"].append(d)
+    if sum(v["stories"] for v in flows.values()) < 100:
+        return {"ready": False, "reason": "Too few stories covered by 3+ outlets yet"}
+    flow_rows = [{"from": s, "to": t, "stories": v["stories"], "crossed": v["crossed"],
+                  "share": round(v["crossed"] / v["stories"], 3) if v["stories"] else None,
+                  "median_hours": round(float(np.median(v["delays"])), 1) if v["delays"] else None}
+                 for (s, t), v in sorted(flows.items())]
+    bridges = sorted(({"id": o, "name": f.outlets[o].name, "group": f.outlets[o].group, "carried": v["n"],
+                       "median_hours": round(float(np.median(v["delays"])), 1)} for o, v in bridge.items() if v["n"] >= 3),
+                     key=lambda r: -r["carried"])
+    return {"ready": True, "flows": flow_rows, "bridges": bridges[:15]}
+
+
+AGENDA_FRAMES = 8
+
+
+def agenda(f: Facts) -> dict:
+    """Each outlet's mix of story frames against the mix of all outlets: what it spends its
+    coverage on. Frame: the most common predicted frame among an event's articles."""
+    per = defaultdict(Counter)
+    for eid, e in f.events.items():
+        fr = e.get("frame")
+        if not fr or fr == "other":
+            continue
+        for o in f.cov[eid]:
+            per[o][fr] += 1
+    total = Counter()
+    for c in per.values():
+        total.update(c)
+    n_all = sum(total.values())
+    if n_all < 500:
+        return {"ready": False, "reason": "Too few framed stories yet"}
+    frames = [fr for fr, _ in total.most_common(AGENDA_FRAMES)]
+    rows = []
+    for o, c in per.items():
+        n = sum(c.values())
+        if n < 40:
+            continue
+        cells = {}
+        for fr in frames:
+            k = c[fr]
+            lo, hi = wilson(k, n)
+            base = total[fr] / n_all
+            cells[fr] = {"share": round(k / n, 3), "ratio": round((k / n) / base, 3) if base else None,
+                         "lo": round(lo / base, 3) if base else None, "hi": round(hi / base, 3) if base else None}
+        rows.append({"id": o, "name": f.outlets[o].name, "group": f.outlets[o].group, "stories": n, "frames": cells})
+    rows.sort(key=lambda r: (r["group"], r["name"]))
+    return {"ready": True, "frames": [{"key": fr, "label": fr.replace("_", " "), "share": round(total[fr] / n_all, 3)} for fr in frames],
+            "outlets": rows}
+
+
 def headline_edits(f: Facts, limit: int = 60) -> dict:
     vol = Counter()
     for ev in f.cov.values():
